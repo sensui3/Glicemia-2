@@ -1,0 +1,751 @@
+"use client"
+
+import { useState, useRef } from "react"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { CalendarIcon, Download, FileText, Sheet } from "lucide-react"
+import { format } from "date-fns"
+import { ptBR } from "date-fns/locale"
+import { cn } from "@/lib/utils"
+import { createClient } from "@/lib/supabase/client"
+import { useToast } from "@/hooks/use-toast"
+import { Checkbox } from "@/components/ui/checkbox"
+
+type Props = {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  userId: string
+}
+
+export function ExportarDadosModal({ open, onOpenChange, userId }: Props) {
+  const [startDate, setStartDate] = useState<Date>()
+  const [endDate, setEndDate] = useState<Date>()
+  const [formatType, setFormatType] = useState<"pdf" | "csv">("pdf")
+  const [isExporting, setIsExporting] = useState(false)
+  const [includeMedications, setIncludeMedications] = useState(true)
+  const { toast } = useToast()
+  const chartRef = useRef<HTMLCanvasElement>(null)
+
+  const handleExport = async () => {
+    if (!startDate || !endDate) {
+      toast({
+        title: "Erro",
+        description: "Por favor, selecione o período completo",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setIsExporting(true)
+
+    try {
+      const supabase = createClient()
+
+      const { data: readings, error } = await supabase
+        .from("glucose_readings")
+        .select("*")
+        .eq("user_id", userId)
+        .gte("reading_date", format(startDate, "yyyy-MM-dd"))
+        .lte("reading_date", format(endDate, "yyyy-MM-dd"))
+        .order("reading_date", { ascending: false })
+        .order("reading_time", { ascending: false })
+
+      if (error) throw error
+
+      let medications: any[] = []
+      if (includeMedications) {
+        const { data: medsData, error: medsError } = await supabase
+          .from("medications")
+          .select("*")
+          .eq("user_id", userId)
+          .eq("is_continuous", true)
+          .eq("is_active", true)
+          .order("created_at", { ascending: false })
+
+        if (!medsError) {
+          medications = medsData || []
+        }
+      }
+
+      if (formatType === "csv") {
+        exportAsCSV(readings || [], medications)
+      } else {
+        await exportAsPDF(readings || [], medications)
+      }
+
+      toast({
+        title: "Exportação concluída!",
+        description: `Dados exportados com sucesso em formato ${formatType.toUpperCase()}`,
+      })
+
+      onOpenChange(false)
+    } catch (error) {
+      console.error("Erro ao exportar:", error)
+      toast({
+        title: "Erro ao exportar",
+        description: "Não foi possível exportar os dados. Tente novamente.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  const exportAsCSV = (readings: any[], medications: any[]) => {
+    const headers = ["Data", "Hora", "Condição", "Glicemia (mg/dL)", "Status", "Observações"]
+    const rows = readings.map((r) => {
+      const status =
+        r.reading_value < 70 ? "Baixo" : r.reading_value <= 99 ? "Normal" : r.reading_value <= 140 ? "Atenção" : "Alto"
+      return [
+        format(new Date(r.reading_date), "dd/MM/yyyy"),
+        r.reading_time.slice(0, 5),
+        getConditionLabel(r.condition),
+        r.reading_value,
+        status,
+        r.observations || "",
+      ]
+    })
+
+    let csvContent = "\uFEFF" + [headers, ...rows].map((row) => row.map((cell) => `"${cell}"`).join(",")).join("\n")
+
+    if (medications.length > 0) {
+      csvContent += "\n\n"
+      csvContent += '"MEDICAÇÕES DE USO CONTÍNUO"\n'
+      csvContent += '"Nome","Tipo","Dosagem","Horário"\n'
+      medications.forEach((med) => {
+        const type = getMedicationType(med.type, med.insulin_type)
+        const dosage = `${med.continuous_dosage || med.dosage} ${med.continuous_dosage_unit || med.dosage_unit}`
+        csvContent += `"${med.name}","${type}","${dosage}","${med.time || "-"}"\n`
+      })
+    }
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const link = document.createElement("a")
+    link.href = URL.createObjectURL(blob)
+    link.download = `glicemia-${format(startDate!, "yyyy-MM-dd")}-ate-${format(endDate!, "yyyy-MM-dd")}.csv`
+    link.click()
+  }
+
+  const exportAsPDF = async (readings: any[], medications: any[]) => {
+    const avgGlucose =
+      readings.length > 0 ? (readings.reduce((sum, r) => sum + r.reading_value, 0) / readings.length).toFixed(1) : "0"
+
+    const maxGlucose = readings.length > 0 ? Math.max(...readings.map((r) => r.reading_value)) : 0
+    const minGlucose = readings.length > 0 ? Math.min(...readings.map((r) => r.reading_value)) : 0
+
+    const normalCount = readings.filter((r) => r.reading_value >= 70 && r.reading_value <= 99).length
+    const highCount = readings.filter((r) => r.reading_value > 140).length
+    const lowCount = readings.filter((r) => r.reading_value < 70).length
+
+    const chartImageData = await generateChartImage(readings)
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Relatório de Glicemia</title>
+          <style>
+            @page { margin: 1cm; }
+            body { 
+              font-family: 'Segoe UI', Arial, sans-serif; 
+              padding: 20px;
+              color: #333;
+            }
+            .header {
+              border-bottom: 3px solid #0f766e;
+              padding-bottom: 20px;
+              margin-bottom: 30px;
+            }
+            h1 { 
+              color: #0f766e; 
+              margin: 0 0 10px 0;
+              font-size: 28px;
+            }
+            h2 {
+              color: #0f766e;
+              font-size: 18px;
+              margin-top: 30px;
+              margin-bottom: 15px;
+              border-bottom: 2px solid #e2e8f0;
+              padding-bottom: 10px;
+            }
+            .period { 
+              color: #666; 
+              font-size: 14px;
+            }
+            .stats {
+              display: grid;
+              grid-template-columns: repeat(4, 1fr);
+              gap: 15px;
+              margin: 30px 0;
+            }
+            .stat-card {
+              background: #f8fafc;
+              border: 1px solid #e2e8f0;
+              border-radius: 8px;
+              padding: 15px;
+              text-align: center;
+            }
+            .stat-label {
+              font-size: 12px;
+              color: #64748b;
+              text-transform: uppercase;
+              font-weight: 600;
+              margin-bottom: 8px;
+            }
+            .stat-value {
+              font-size: 24px;
+              font-weight: bold;
+              color: #0f766e;
+            }
+            .stat-unit {
+              font-size: 12px;
+              color: #94a3b8;
+            }
+            .medications-section {
+              margin: 30px 0;
+              padding: 20px;
+              background: #f8fafc;
+              border: 1px solid #e2e8f0;
+              border-radius: 8px;
+              page-break-inside: avoid;
+            }
+            .medication-item {
+              background: white;
+              border: 1px solid #e2e8f0;
+              border-radius: 6px;
+              padding: 12px;
+              margin-bottom: 10px;
+            }
+            .medication-name {
+              font-weight: 600;
+              color: #0f766e;
+              font-size: 14px;
+            }
+            .medication-details {
+              color: #64748b;
+              font-size: 12px;
+              margin-top: 5px;
+            }
+            .chart-container {
+              margin: 30px 0;
+              text-align: center;
+              page-break-inside: avoid;
+            }
+            .chart-container img {
+              max-width: 100%;
+              height: auto;
+              border: 1px solid #e2e8f0;
+              border-radius: 8px;
+            }
+            .chart-title {
+              font-size: 16px;
+              font-weight: 600;
+              color: #0f766e;
+              margin-bottom: 15px;
+            }
+            table { 
+              width: 100%; 
+              border-collapse: collapse; 
+              margin-top: 20px;
+              font-size: 13px;
+              page-break-inside: auto;
+            }
+            tr {
+              page-break-inside: avoid;
+              page-break-after: auto;
+            }
+            th, td { 
+              border: 1px solid #e2e8f0; 
+              padding: 10px 12px; 
+              text-align: left; 
+            }
+            th { 
+              background-color: #0f766e; 
+              color: white; 
+              font-weight: 600;
+            }
+            tr:nth-child(even) { 
+              background-color: #f8fafc; 
+            }
+            .status-badge {
+              display: inline-block;
+              padding: 4px 8px;
+              border-radius: 4px;
+              font-size: 11px;
+              font-weight: 600;
+            }
+            .status-normal { background: #dcfce7; color: #166534; }
+            .status-alto { background: #fee2e2; color: #991b1b; }
+            .status-baixo { background: #fef3c7; color: #92400e; }
+            .status-atencao { background: #fed7aa; color: #9a3412; }
+            .footer { 
+              margin-top: 40px; 
+              padding-top: 20px;
+              border-top: 2px solid #e2e8f0;
+              font-size: 11px; 
+              color: #64748b; 
+              page-break-inside: avoid;
+            }
+            .footer p { margin: 5px 0; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>📊 Relatório de Controle de Glicemia</h1>
+            <p class="period">
+              Período: <strong>${format(startDate!, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</strong> até 
+              <strong>${format(endDate!, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</strong>
+            </p>
+          </div>
+
+          <div class="stats">
+            <div class="stat-card">
+              <div class="stat-label">Média</div>
+              <div class="stat-value">${avgGlucose} <span class="stat-unit">mg/dL</span></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Maior Leitura</div>
+              <div class="stat-value">${maxGlucose} <span class="stat-unit">mg/dL</span></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Menor Leitura</div>
+              <div class="stat-value">${minGlucose} <span class="stat-unit">mg/dL</span></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Total Registros</div>
+              <div class="stat-value">${readings.length}</div>
+            </div>
+          </div>
+          
+          ${
+            medications.length > 0
+              ? `
+          <div class="medications-section">
+            <h2>💊 Medicações de Uso Contínuo</h2>
+            ${medications
+              .map((med) => {
+                const type = getMedicationType(med.type, med.insulin_type)
+                const dosage = `${med.continuous_dosage || med.dosage} ${med.continuous_dosage_unit || med.dosage_unit}`
+                const time = med.time ? ` às ${med.time.slice(0, 5)}` : ""
+                return `
+                  <div class="medication-item">
+                    <div class="medication-name">${med.name}</div>
+                    <div class="medication-details">
+                      ${type} • ${dosage}${time}
+                    </div>
+                  </div>
+                `
+              })
+              .join("")}
+          </div>
+          `
+              : ""
+          }
+          
+          ${
+            chartImageData
+              ? `
+          <div class="chart-container">
+            <div class="chart-title">Gráfico de Evolução da Glicemia</div>
+            <img src="${chartImageData}" alt="Gráfico de Glicemia" />
+          </div>
+          `
+              : ""
+          }
+          
+          <h2>📋 Histórico de Leituras</h2>
+          
+          <table>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Hora</th>
+                <th>Condição</th>
+                <th>Glicemia</th>
+                <th>Status</th>
+                <th>Observações</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${readings
+                .map((r) => {
+                  const value = r.reading_value
+                  let statusClass = "status-normal"
+                  let statusText = "Normal"
+
+                  if (value < 70) {
+                    statusClass = "status-baixo"
+                    statusText = "Baixo"
+                  } else if (value > 140) {
+                    statusClass = "status-alto"
+                    statusText = "Alto"
+                  } else if (value > 99) {
+                    statusClass = "status-atencao"
+                    statusText = "Atenção"
+                  }
+
+                  return `
+                    <tr>
+                      <td>${format(new Date(r.reading_date), "dd/MM/yyyy")}</td>
+                      <td>${r.reading_time.slice(0, 5)}</td>
+                      <td>${getConditionLabel(r.condition)}</td>
+                      <td><strong>${r.reading_value} mg/dL</strong></td>
+                      <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                      <td>${r.observations || "-"}</td>
+                    </tr>
+                  `
+                })
+                .join("")}
+            </tbody>
+          </table>
+          
+          <div class="footer">
+            <p><strong>Distribuição dos Resultados:</strong></p>
+            <p>✅ Normais (70-99 mg/dL): ${normalCount} leitura(s) - ${readings.length > 0 ? ((normalCount / readings.length) * 100).toFixed(1) : 0}%</p>
+            <p>⚠️ Altos (&gt;140 mg/dL): ${highCount} leitura(s) - ${readings.length > 0 ? ((highCount / readings.length) * 100).toFixed(1) : 0}%</p>
+            <p>⬇️ Baixos (&lt;70 mg/dL): ${lowCount} leitura(s) - ${readings.length > 0 ? ((lowCount / readings.length) * 100).toFixed(1) : 0}%</p>
+            <p style="margin-top: 20px;">
+              <strong>Relatório gerado em:</strong> ${format(new Date(), "dd/MM/yyyy 'às' HH:mm")}
+            </p>
+            <p style="margin-top: 10px; font-style: italic;">
+              Valores de referência em jejum: 70-99 mg/dL (Normal) | 100-125 mg/dL (Pré-diabetes) | ≥126 mg/dL (Diabetes)
+            </p>
+          </div>
+        </body>
+      </html>
+    `
+
+    const printWindow = window.open("", "_blank")
+    if (printWindow) {
+      printWindow.document.write(html)
+      printWindow.document.close()
+      printWindow.focus()
+      setTimeout(() => {
+        printWindow.print()
+      }, 500)
+    }
+  }
+
+  const generateChartImage = async (readings: any[]): Promise<string> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement("canvas")
+      canvas.width = 800
+      canvas.height = 400
+      const ctx = canvas.getContext("2d")
+
+      if (!ctx) {
+        resolve("")
+        return
+      }
+
+      // Ordenar readings do mais antigo para o mais recente para o gráfico
+      const sortedReadings = [...readings].sort((a, b) => {
+        const dateA = new Date(`${a.reading_date}T${a.reading_time}`)
+        const dateB = new Date(`${b.reading_date}T${b.reading_time}`)
+        return dateA.getTime() - dateB.getTime()
+      })
+
+      // Configuração do gráfico
+      const padding = 60
+      const graphWidth = canvas.width - padding * 2
+      const graphHeight = canvas.height - padding * 2
+
+      // Fundo branco
+      ctx.fillStyle = "#ffffff"
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      // Encontrar min e max para escala
+      const values = sortedReadings.map((r) => r.reading_value)
+      const minValue = Math.min(...values, 70)
+      const maxValue = Math.max(...values, 140)
+      const valueRange = maxValue - minValue
+
+      // Desenhar grade
+      ctx.strokeStyle = "#e5e7eb"
+      ctx.lineWidth = 1
+      for (let i = 0; i <= 5; i++) {
+        const y = padding + (graphHeight / 5) * i
+        ctx.beginPath()
+        ctx.moveTo(padding, y)
+        ctx.lineTo(canvas.width - padding, y)
+        ctx.stroke()
+
+        // Labels do eixo Y
+        const value = maxValue - (valueRange / 5) * i
+        ctx.fillStyle = "#6b7280"
+        ctx.font = "12px Arial"
+        ctx.textAlign = "right"
+        ctx.fillText(Math.round(value).toString(), padding - 10, y + 5)
+      }
+
+      // Desenhar linhas de referência
+      const drawReferenceLine = (value: number, color: string, label: string) => {
+        const y = padding + graphHeight - ((value - minValue) / valueRange) * graphHeight
+        ctx.strokeStyle = color
+        ctx.setLineDash([5, 5])
+        ctx.lineWidth = 2
+        ctx.beginPath()
+        ctx.moveTo(padding, y)
+        ctx.lineTo(canvas.width - padding, y)
+        ctx.stroke()
+        ctx.setLineDash([])
+
+        ctx.fillStyle = color
+        ctx.font = "10px Arial"
+        ctx.textAlign = "left"
+        ctx.fillText(label, padding + 5, y - 5)
+      }
+
+      drawReferenceLine(70, "#22c55e", "Mín. Normal (70)")
+      drawReferenceLine(99, "#22c55e", "Máx. Normal (99)")
+      drawReferenceLine(140, "#f59e0b", "Atenção (140)")
+
+      // Desenhar linha do gráfico
+      if (sortedReadings.length > 0) {
+        ctx.strokeStyle = "#0f766e"
+        ctx.lineWidth = 3
+        ctx.beginPath()
+
+        sortedReadings.forEach((reading, index) => {
+          const x = padding + (graphWidth / (sortedReadings.length - 1 || 1)) * index
+          const y = padding + graphHeight - ((reading.reading_value - minValue) / valueRange) * graphHeight
+
+          if (index === 0) {
+            ctx.moveTo(x, y)
+          } else {
+            ctx.lineTo(x, y)
+          }
+        })
+
+        ctx.stroke()
+
+        // Desenhar pontos
+        sortedReadings.forEach((reading, index) => {
+          const x = padding + (graphWidth / (sortedReadings.length - 1 || 1)) * index
+          const y = padding + graphHeight - ((reading.reading_value - minValue) / valueRange) * graphHeight
+
+          ctx.fillStyle = "#0f766e"
+          ctx.beginPath()
+          ctx.arc(x, y, 4, 0, Math.PI * 2)
+          ctx.fill()
+        })
+      }
+
+      // Eixos
+      ctx.strokeStyle = "#374151"
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.moveTo(padding, padding)
+      ctx.lineTo(padding, canvas.height - padding)
+      ctx.lineTo(canvas.width - padding, canvas.height - padding)
+      ctx.stroke()
+
+      // Labels dos eixos
+      ctx.fillStyle = "#374151"
+      ctx.font = "14px Arial"
+      ctx.textAlign = "center"
+      ctx.fillText("mg/dL", padding / 2, padding - 20)
+      ctx.fillText("Período", canvas.width / 2, canvas.height - padding / 3)
+
+      resolve(canvas.toDataURL("image/png"))
+    })
+  }
+
+  const getConditionLabel = (condition: string) => {
+    const labels: Record<string, string> = {
+      jejum: "Jejum",
+      antes_refeicao: "Antes da Refeição",
+      apos_refeicao: "Após Refeição",
+      ao_dormir: "Ao Dormir",
+      outro: "Outro",
+    }
+    return labels[condition] || condition
+  }
+
+  const getMedicationType = (type: string, insulinType?: string) => {
+    if (type === "insulina") {
+      const insulinLabels: Record<string, string> = {
+        rapida: "Insulina Rápida",
+        lenta: "Insulina Lenta",
+        intermediaria: "Insulina Intermediária",
+      }
+      return insulinLabels[insulinType || ""] || "Insulina"
+    }
+    return "Outro Medicamento"
+  }
+
+  const quickPeriods = [
+    { label: "Últimos 7 dias", days: 7 },
+    { label: "Últimos 30 dias", days: 30 },
+    { label: "Este mês", days: new Date().getDate() },
+    { label: "Últimos 3 meses", days: 90 },
+  ]
+
+  const handleQuickPeriod = (days: number) => {
+    const end = new Date()
+    const start = new Date()
+    start.setDate(start.getDate() - days)
+    setStartDate(start)
+    setEndDate(end)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-xl">Exportar Dados de Glicemia</DialogTitle>
+          <DialogDescription>Selecione o período e o formato para baixar seu histórico.</DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-6 py-4">
+          {/* Período Rápido */}
+          <div>
+            <label className="text-sm font-medium mb-2 block">Período Rápido</label>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {quickPeriods.map((period) => (
+                <Button
+                  key={period.label}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleQuickPeriod(period.days)}
+                  className="justify-start text-xs md:text-sm"
+                >
+                  {period.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          {/* Seleção de Datas */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">Início</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground")}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {startDate ? format(startDate, "dd/MM/yyyy", { locale: ptBR }) : "Selecione"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={startDate} onSelect={setStartDate} />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">Fim</label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn("w-full justify-start text-left font-normal", !endDate && "text-muted-foreground")}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {endDate ? format(endDate, "dd/MM/yyyy", { locale: ptBR }) : "Selecione"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar mode="single" selected={endDate} onSelect={setEndDate} />
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+
+          {/* Resumo do Período */}
+          {startDate && endDate && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 md:p-4">
+              <p className="text-sm font-medium text-blue-900 mb-1">Resumo da Exportação</p>
+              <p className="text-xs md:text-sm text-blue-700">
+                Período Selecionado: <strong>{format(startDate, "dd 'de' MMMM", { locale: ptBR })}</strong> -{" "}
+                <strong>{format(endDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</strong>
+                <span className="block mt-1">
+                  ({Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))} dias)
+                </span>
+              </p>
+            </div>
+          )}
+
+          <div className="flex items-center space-x-2 p-3 bg-teal-50 border border-teal-200 rounded-lg">
+            <Checkbox
+              id="include-medications"
+              checked={includeMedications}
+              onCheckedChange={(checked) => setIncludeMedications(checked as boolean)}
+            />
+            <label
+              htmlFor="include-medications"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+            >
+              Incluir medicações de uso contínuo na exportação
+            </label>
+          </div>
+
+          {/* Formato do Arquivo */}
+          <div>
+            <label className="text-sm font-medium mb-3 block">Formato do Arquivo</label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setFormatType("pdf")}
+                className={cn(
+                  "flex flex-col items-center justify-center p-3 md:p-4 border-2 rounded-lg transition-all",
+                  formatType === "pdf"
+                    ? "border-teal-600 bg-teal-50"
+                    : "border-gray-200 hover:border-gray-300 bg-white",
+                )}
+              >
+                <FileText
+                  className={cn("w-6 h-6 md:w-8 md:h-8 mb-2", formatType === "pdf" ? "text-teal-600" : "text-gray-400")}
+                />
+                <span className="font-medium text-xs md:text-sm">PDF (Relatório)</span>
+                <span className="text-[10px] md:text-xs text-gray-500 mt-1">Com gráfico incluso</span>
+              </button>
+
+              <button
+                onClick={() => setFormatType("csv")}
+                className={cn(
+                  "flex flex-col items-center justify-center p-3 md:p-4 border-2 rounded-lg transition-all",
+                  formatType === "csv"
+                    ? "border-teal-600 bg-teal-50"
+                    : "border-gray-200 hover:border-gray-300 bg-white",
+                )}
+              >
+                <Sheet
+                  className={cn("w-6 h-6 md:w-8 md:h-8 mb-2", formatType === "csv" ? "text-teal-600" : "text-gray-400")}
+                />
+                <span className="font-medium text-xs md:text-sm">CSV (Excel)</span>
+                <span className="text-[10px] md:text-xs text-gray-500 mt-1">Dados brutos</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isExporting}
+            className="w-full sm:w-auto"
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleExport}
+            disabled={!startDate || !endDate || isExporting}
+            className="bg-teal-600 hover:bg-teal-700 w-full sm:w-auto"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            {isExporting ? "Exportando..." : "Exportar Arquivo"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
