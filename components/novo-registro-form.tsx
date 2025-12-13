@@ -30,8 +30,11 @@ export function NovoRegistroForm({ userId }: Props) {
   const [error, setError] = useState<string | null>(null)
 
   // Estados do formulário
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0])
-  const [time, setTime] = useState(new Date().toTimeString().slice(0, 5))
+  const today = new Date()
+  const localDate = today.toLocaleDateString('en-CA') // yyyy‑mm‑dd, matches HTML date input
+  const localTime = today.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false })
+  const [date, setDate] = useState(localDate)
+  const [time, setTime] = useState(localTime)
   const [condition, setCondition] = useState<string>("jejum")
   const [value, setValue] = useState<string>("")
   const [observations, setObservations] = useState("")
@@ -123,9 +126,8 @@ export function NovoRegistroForm({ userId }: Props) {
                   key={cond.value}
                   type="button"
                   onClick={() => setCondition(cond.value)}
-                  className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all ${
-                    condition === cond.value ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-gray-300"
-                  }`}
+                  className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all ${condition === cond.value ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-gray-300"
+                    }`}
                 >
                   <Icon className="w-6 h-6" />
                   <span className="text-sm font-medium">{cond.label}</span>

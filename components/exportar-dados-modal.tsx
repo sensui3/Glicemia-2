@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { Checkbox } from "@/components/ui/checkbox"
+import { getMedicationTypeLabel } from "@/lib/types"
 
 type Props = {
   open: boolean
@@ -43,6 +44,7 @@ export function ExportarDadosModal({ open, onOpenChange, userId }: Props) {
     try {
       const supabase = createClient()
 
+      // Buscar leituras
       const { data: readings, error } = await supabase
         .from("glucose_readings")
         .select("*")
@@ -62,7 +64,7 @@ export function ExportarDadosModal({ open, onOpenChange, userId }: Props) {
           .eq("user_id", userId)
           .eq("is_continuous", true)
           .eq("is_active", true)
-          .order("created_at", { ascending: false })
+          .order("medication_name", { ascending: true })
 
         if (!medsError) {
           medications = medsData || []
@@ -115,9 +117,9 @@ export function ExportarDadosModal({ open, onOpenChange, userId }: Props) {
       csvContent += '"MEDICAÇÕES DE USO CONTÍNUO"\n'
       csvContent += '"Nome","Tipo","Dosagem","Horário"\n'
       medications.forEach((med) => {
-        const type = getMedicationType(med.type, med.insulin_type)
+        const type = getMedicationTypeLabel(med.medication_type) || "Outro"
         const dosage = `${med.continuous_dosage || med.dosage} ${med.continuous_dosage_unit || med.dosage_unit}`
-        csvContent += `"${med.name}","${type}","${dosage}","${med.time || "-"}"\n`
+        csvContent += `"${med.medication_name}","${type}","${dosage}","${med.administration_time ? med.administration_time.slice(0, 5) : "-"}"\n`
       })
     }
 
@@ -328,12 +330,12 @@ export function ExportarDadosModal({ open, onOpenChange, userId }: Props) {
             <h2>💊 Medicações de Uso Contínuo</h2>
             ${medications
               .map((med) => {
-                const type = getMedicationType(med.type, med.insulin_type)
+                const type = getMedicationTypeLabel(med.medication_type) || "Outro"
                 const dosage = `${med.continuous_dosage || med.dosage} ${med.continuous_dosage_unit || med.dosage_unit}`
-                const time = med.time ? ` às ${med.time.slice(0, 5)}` : ""
+                const time = med.administration_time ? ` às ${med.administration_time.slice(0, 5)}` : ""
                 return `
                   <div class="medication-item">
-                    <div class="medication-name">${med.name}</div>
+                    <div class="medication-name">${med.medication_name}</div>
                     <div class="medication-details">
                       ${type} • ${dosage}${time}
                     </div>
@@ -460,7 +462,8 @@ export function ExportarDadosModal({ open, onOpenChange, userId }: Props) {
 
       // Encontrar min e max para escala
       const values = sortedReadings.map((r) => r.reading_value)
-      const minValue = Math.min(...values, 70)
+      // Ajuste: começar do zero como parâmetro
+      const minValue = 0
       const maxValue = Math.max(...values, 140)
       const valueRange = maxValue - minValue
 
@@ -485,19 +488,22 @@ export function ExportarDadosModal({ open, onOpenChange, userId }: Props) {
       // Desenhar linhas de referência
       const drawReferenceLine = (value: number, color: string, label: string) => {
         const y = padding + graphHeight - ((value - minValue) / valueRange) * graphHeight
-        ctx.strokeStyle = color
-        ctx.setLineDash([5, 5])
-        ctx.lineWidth = 2
-        ctx.beginPath()
-        ctx.moveTo(padding, y)
-        ctx.lineTo(canvas.width - padding, y)
-        ctx.stroke()
-        ctx.setLineDash([])
+        // Só desenhar se estiver dentro da escala
+        if (y >= padding && y <= padding + graphHeight) {
+          ctx.strokeStyle = color
+          ctx.setLineDash([5, 5])
+          ctx.lineWidth = 2
+          ctx.beginPath()
+          ctx.moveTo(padding, y)
+          ctx.lineTo(canvas.width - padding, y)
+          ctx.stroke()
+          ctx.setLineDash([])
 
-        ctx.fillStyle = color
-        ctx.font = "10px Arial"
-        ctx.textAlign = "left"
-        ctx.fillText(label, padding + 5, y - 5)
+          ctx.fillStyle = color
+          ctx.font = "10px Arial"
+          ctx.textAlign = "left"
+          ctx.fillText(label, padding + 5, y - 5)
+        }
       }
 
       drawReferenceLine(70, "#22c55e", "Mín. Normal (70)")
@@ -533,6 +539,24 @@ export function ExportarDadosModal({ open, onOpenChange, userId }: Props) {
           ctx.arc(x, y, 4, 0, Math.PI * 2)
           ctx.fill()
         })
+
+        // Desenhar labels do eixo X (Período)
+        // Escolher alguns pontos para mostrar a data
+        const numLabels = 5
+        const step = Math.ceil((sortedReadings.length - 1) / (numLabels - 1)) || 1
+        
+        ctx.fillStyle = "#6b7280"
+        ctx.font = "10px Arial"
+        ctx.textAlign = "center"
+
+        sortedReadings.forEach((reading, index) => {
+          // Mostrar o primeiro, o último, e alguns intermediários
+          if (index === 0 || index === sortedReadings.length - 1 || index % step === 0) {
+            const x = padding + (graphWidth / (sortedReadings.length - 1 || 1)) * index
+            const dateLabel = format(new Date(reading.reading_date), "dd/MM")
+            ctx.fillText(dateLabel, x, canvas.height - padding + 15)
+          }
+        })
       }
 
       // Eixos
@@ -549,7 +573,7 @@ export function ExportarDadosModal({ open, onOpenChange, userId }: Props) {
       ctx.font = "14px Arial"
       ctx.textAlign = "center"
       ctx.fillText("mg/dL", padding / 2, padding - 20)
-      ctx.fillText("Período", canvas.width / 2, canvas.height - padding / 3)
+      ctx.fillText("Período", canvas.width / 2, canvas.height - padding / 3 + 20)
 
       resolve(canvas.toDataURL("image/png"))
     })
@@ -564,18 +588,6 @@ export function ExportarDadosModal({ open, onOpenChange, userId }: Props) {
       outro: "Outro",
     }
     return labels[condition] || condition
-  }
-
-  const getMedicationType = (type: string, insulinType?: string) => {
-    if (type === "insulina") {
-      const insulinLabels: Record<string, string> = {
-        rapida: "Insulina Rápida",
-        lenta: "Insulina Lenta",
-        intermediaria: "Insulina Intermediária",
-      }
-      return insulinLabels[insulinType || ""] || "Insulina"
-    }
-    return "Outro Medicamento"
   }
 
   const quickPeriods = [
