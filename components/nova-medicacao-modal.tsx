@@ -105,6 +105,8 @@ export function NovaMedicacaoModal({ open, onOpenChange, userId, onSuccess }: Pr
     { value: "insulina_rapida", label: "Insulina Rápida", icon: Syringe },
     { value: "insulina_lenta", label: "Insulina Lenta", icon: Activity },
     { value: "insulina_intermediaria", label: "Insulina Intermediária", icon: Activity },
+    { value: "insulina_basal", label: "Insulina Basal", icon: Activity },
+    { value: "insulina_bolus", label: "Insulina Bolus", icon: Syringe },
     { value: "outro_medicamento", label: "Outro Medicamento", icon: PillIcon },
   ]
 
@@ -176,11 +178,10 @@ export function NovaMedicacaoModal({ open, onOpenChange, userId, onSuccess }: Pr
                         setDosageUnit("UI")
                       }
                     }}
-                    className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-all ${
-                      medicationType === type.value
+                    className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-all ${medicationType === type.value
                         ? "border-blue-500 bg-blue-50 text-blue-700"
                         : "border-gray-200 hover:border-gray-300"
-                    }`}
+                      }`}
                   >
                     <Icon className="w-5 h-5" />
                     <span className="text-sm font-medium">{type.label}</span>

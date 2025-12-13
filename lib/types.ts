@@ -36,7 +36,7 @@ export function getGlucoseStatus(value: number, condition: string): GlucoseStatu
   return "alto"
 }
 
-export type MedicationType = "insulina_rapida" | "insulina_lenta" | "insulina_intermediaria" | "outro_medicamento"
+export type MedicationType = "insulina_rapida" | "insulina_lenta" | "insulina_intermediaria" | "insulina_basal" | "insulina_bolus" | "outro_medicamento"
 
 export type Medication = {
   id: string
@@ -62,6 +62,8 @@ export function getMedicationTypeLabel(type: MedicationType): string {
     insulina_rapida: "Insulina Rápida",
     insulina_lenta: "Insulina Lenta",
     insulina_intermediaria: "Insulina Intermediária",
+    insulina_basal: "Insulina Basal",
+    insulina_bolus: "Insulina Bolus",
     outro_medicamento: "Outro Medicamento",
   }
   return labels[type]

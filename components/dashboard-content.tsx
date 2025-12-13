@@ -29,12 +29,14 @@ export function DashboardContent({ userId, initialFilter, initialPage, customSta
   const [totalItems, setTotalItems] = useState(0)
   const [loading, setLoading] = useState(false)
   const [statsKey, setStatsKey] = useState(0)
+  const [viewMode, setViewMode] = useState<"standard" | "medical">("standard")
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
 
   const ITEMS_PER_PAGE = 15
 
   useEffect(() => {
     loadData()
-  }, [filter, page, startDate, endDate, userId])
+  }, [filter, page, startDate, endDate, userId, viewMode, sortOrder])
 
   const loadData = async () => {
     setLoading(true)
@@ -66,28 +68,69 @@ export function DashboardContent({ userId, initialFilter, initialPage, customSta
       }
     }
 
-    const { count } = await supabase
-      .from("glucose_readings")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .gte("reading_date", queryStartDate)
-      .lte("reading_date", queryEndDate)
+    if (viewMode === "medical") {
+      // Logic for Medical View: Pagination by Day
+      // 1. Get all dates in range
+      const { data: allDatesData } = await supabase
+        .from("glucose_readings")
+        .select("reading_date")
+        .eq("user_id", userId)
+        .gte("reading_date", queryStartDate)
+        .lte("reading_date", queryEndDate)
+        .order("reading_date", { ascending: sortOrder === "asc" })
 
-    setTotalPages(Math.ceil((count || 0) / ITEMS_PER_PAGE))
-    setTotalItems(count || 0)
+      const uniqueDates = Array.from(new Set((allDatesData || []).map(d => d.reading_date)))
 
-    const { data: readingsData } = await supabase
-      .from("glucose_readings")
-      .select("*")
-      .eq("user_id", userId)
-      .gte("reading_date", queryStartDate)
-      .lte("reading_date", queryEndDate)
-      .order("reading_date", { ascending: false })
-      .order("reading_time", { ascending: false })
-      .range((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE - 1)
+      const count = uniqueDates.length
+      setTotalPages(Math.ceil(count / ITEMS_PER_PAGE))
+      setTotalItems(count)
 
-    setReadings((readingsData || []) as GlucoseReading[])
+      // 2. Slice dates for current page
+      const startIdx = (page - 1) * ITEMS_PER_PAGE
+      const pageDates = uniqueDates.slice(startIdx, startIdx + ITEMS_PER_PAGE)
 
+      if (pageDates.length > 0) {
+        // 3. Fetch readings for these dates
+        const { data: readingsData } = await supabase
+          .from("glucose_readings")
+          .select("*")
+          .eq("user_id", userId)
+          .in("reading_date", pageDates)
+          .order("reading_date", { ascending: sortOrder === "asc" })
+          .order("reading_time", { ascending: sortOrder === "asc" })
+
+        setReadings((readingsData || []) as GlucoseReading[])
+      } else {
+        setReadings([])
+      }
+
+    } else {
+      // Standard Logic: Pagination by Reading
+      const { count } = await supabase
+        .from("glucose_readings")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .gte("reading_date", queryStartDate)
+        .lte("reading_date", queryEndDate)
+
+      setTotalPages(Math.ceil((count || 0) / ITEMS_PER_PAGE))
+      setTotalItems(count || 0)
+
+      const { data: readingsData } = await supabase
+        .from("glucose_readings")
+        .select("*")
+        .eq("user_id", userId)
+        .gte("reading_date", queryStartDate)
+        .lte("reading_date", queryEndDate)
+        .order("reading_date", { ascending: sortOrder === "asc" })
+        .order("reading_time", { ascending: sortOrder === "asc" })
+        .range((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE - 1)
+
+      setReadings((readingsData || []) as GlucoseReading[])
+    }
+
+    // Chart data always needs all readings in range (or maybe downsampled, but usually all)
+    // We already query this separately
     const { data: allReadingsForChart } = await supabase
       .from("glucose_readings")
       .select("*")
@@ -118,6 +161,15 @@ export function DashboardContent({ userId, initialFilter, initialPage, customSta
     setPage(newPage)
   }
 
+  const handleViewModeChange = (mode: "standard" | "medical") => {
+    setViewMode(mode)
+    setPage(1) // Reset page when switching views to avoid page out of bounds
+  }
+
+  const handleSortChange = (order: "asc" | "desc") => {
+    setSortOrder(order)
+  }
+
   const handleDataChange = () => {
     loadData()
   }
@@ -133,7 +185,7 @@ export function DashboardContent({ userId, initialFilter, initialPage, customSta
       {/* Stats Cards */}
       <GlucoseStats userId={userId} refreshKey={statsKey} />
 
-      <DashboardClient userId={userId} onDataChange={handleDataChange} />
+      <DashboardClient userId={userId} onDataChange={handleDataChange} sortOrder={sortOrder} />
 
       <GlucoseChart readings={chartReadings} />
 
@@ -141,6 +193,10 @@ export function DashboardContent({ userId, initialFilter, initialPage, customSta
 
       <div className="my-8">
         <MedicalCalendar userId={userId} />
+      </div>
+
+      <div className="mb-2">
+        <DashboardClient userId={userId} onDataChange={handleDataChange} sortOrder={sortOrder} />
       </div>
 
       {/* Table */}
@@ -153,6 +209,10 @@ export function DashboardContent({ userId, initialFilter, initialPage, customSta
         onFilterChange={handleFilterChange}
         onPageChange={handlePageChange}
         onDataChange={handleDataChange}
+        viewMode={viewMode}
+        onViewModeChange={handleViewModeChange}
+        sortOrder={sortOrder}
+        onSortChange={handleSortChange}
       />
     </div>
   )

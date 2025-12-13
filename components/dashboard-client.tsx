@@ -9,9 +9,10 @@ import { ExportarDadosModal } from "@/components/exportar-dados-modal"
 type Props = {
   userId: string
   onDataChange: () => void
+  sortOrder: "asc" | "desc"
 }
 
-export function DashboardClient({ userId, onDataChange }: Props) {
+export function DashboardClient({ userId, onDataChange, sortOrder }: Props) {
   const [isNovoRegistroOpen, setIsNovoRegistroOpen] = useState(false)
   const [isExportarOpen, setIsExportarOpen] = useState(false)
 
@@ -34,7 +35,7 @@ export function DashboardClient({ userId, onDataChange }: Props) {
       </div>
 
       <NovoRegistroModal open={isNovoRegistroOpen} onOpenChange={setIsNovoRegistroOpen} onDataChange={onDataChange} />
-      <ExportarDadosModal open={isExportarOpen} onOpenChange={setIsExportarOpen} userId={userId} />
+      <ExportarDadosModal open={isExportarOpen} onOpenChange={setIsExportarOpen} userId={userId} sortOrder={sortOrder} />
     </>
   )
 }

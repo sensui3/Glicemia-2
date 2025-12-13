@@ -1,13 +1,14 @@
 "use client"
 
 import { type GlucoseReading, type GlucoseStatus, getGlucoseStatus } from "@/lib/types"
-import { Utensils, Moon, Coffee, MoreHorizontal, Pencil } from "lucide-react"
+import { Utensils, Moon, Coffee, MoreHorizontal, Pencil, LayoutList, Grid3X3, ArrowDownAZ, ArrowUpAZ } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { TablePagination } from "@/components/table-pagination"
 import { TableFilters } from "@/components/table-filters"
 import { useState } from "react"
 import { EditarRegistroModal } from "@/components/editar-registro-modal"
 import { DeleteReadingButton } from "@/components/delete-reading-button"
+import { GlucoseTableMedical } from "@/components/glucose-table-medical"
 
 type Props = {
   readings: GlucoseReading[]
@@ -18,6 +19,10 @@ type Props = {
   onFilterChange: (filter: string, startDate?: string, endDate?: string) => void
   onPageChange: (page: number) => void
   onDataChange: () => void
+  viewMode: "standard" | "medical"
+  onViewModeChange: (mode: "standard" | "medical") => void
+  sortOrder: "asc" | "desc"
+  onSortChange: (order: "asc" | "desc") => void
 }
 
 function getConditionIcon(condition: string) {
@@ -43,21 +48,23 @@ function getConditionLabel(condition: string, time?: string) {
       if (time) {
         const hour = Number.parseInt(time.split(":")[0])
         if (hour >= 5 && hour < 10) return "Antes do Café da Manhã"
-        if (hour >= 10 && hour < 15) return "Antes do Almoço"
-        if (hour >= 15 && hour < 18) return "Antes do Lanche"
-        if (hour >= 18 && hour < 23) return "Antes do Jantar"
-        return "Antes da Ceia"
+        if (hour >= 10 && hour < 14) return "Antes do Almoço"
+        if (hour >= 14 && hour < 19) return "Antes do Lanche"
+        if (hour >= 19 || hour < 5) return "Antes do Jantar"
+        // Fallback
+        return "Antes Ref."
       }
       return "Antes Ref."
     }
     case "apos_refeicao": {
       if (time) {
         const hour = Number.parseInt(time.split(":")[0])
-        if (hour >= 5 && hour < 10) return "Após Café da Manhã"
-        if (hour >= 10 && hour < 15) return "Após Almoço"
-        if (hour >= 15 && hour < 18) return "Após Lanche"
-        if (hour >= 18 && hour < 23) return "Após Jantar"
-        return "Após Ceia"
+        if (hour >= 5 && hour < 12) return "Após Café da Manhã"
+        if (hour >= 12 && hour < 16) return "Após Almoço"
+        if (hour >= 16 && hour < 19) return "Após Lanche"
+        if (hour >= 19 || hour < 5) return "Após Jantar"
+        // Fallback
+        return "Após Ref."
       }
       return "Após Ref."
     }
@@ -99,6 +106,10 @@ export function GlucoseTable({
   onFilterChange,
   onPageChange,
   onDataChange,
+  viewMode,
+  onViewModeChange,
+  sortOrder,
+  onSortChange,
 }: Props) {
   const [editingReading, setEditingReading] = useState<GlucoseReading | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -112,75 +123,130 @@ export function GlucoseTable({
     <>
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         {/* Filters */}
-        <TableFilters currentFilter={currentFilter} onFilterChange={onFilterChange} />
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4 border-b border-gray-100">
+          <TableFilters currentFilter={currentFilter} onFilterChange={onFilterChange} />
+
+          <div className="flex items-center gap-2">
+            <div className="flex items-center bg-gray-100 p-1 rounded-lg">
+              <button
+                onClick={() => onSortChange("desc")}
+                className={`p-2 rounded-md transition-all ${sortOrder === "desc"
+                  ? "bg-white text-teal-700 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+                  }`}
+                title="Mais Recentes Primeiro"
+              >
+                <ArrowDownAZ className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => onSortChange("asc")}
+                className={`p-2 rounded-md transition-all ${sortOrder === "asc"
+                  ? "bg-white text-teal-700 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+                  }`}
+                title="Mais Antigos Primeiro"
+              >
+                <ArrowUpAZ className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex items-center bg-gray-100 p-1 rounded-lg">
+              <button
+                onClick={() => onViewModeChange("standard")}
+                className={`p-2 rounded-md transition-all ${viewMode === "standard"
+                  ? "bg-white text-teal-700 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+                  }`}
+                title="Visualização em Lista"
+              >
+                <LayoutList className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => onViewModeChange("medical")}
+                className={`p-2 rounded-md transition-all ${viewMode === "medical"
+                  ? "bg-white text-teal-700 shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+                  }`}
+                title="Visualização Médica"
+              >
+                <Grid3X3 className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
 
         {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Data / Hora
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Contexto
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Glicemia
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Observações
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ações
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {readings.map((reading) => {
-                const status = getGlucoseStatus(reading.reading_value, reading.condition)
-                const [year, month, day] = reading.reading_date.split("-")
-                const formattedDate = `${day}/${month}/${year}`
-                const formattedTime = reading.reading_time.slice(0, 5)
+        {/* Table */}
+        {viewMode === "standard" ? (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Data / Hora
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Contexto
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Glicemia
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Observações
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Ações
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {readings.map((reading) => {
+                  const status = getGlucoseStatus(reading.reading_value, reading.condition)
+                  const [year, month, day] = reading.reading_date.split("-")
+                  const formattedDate = `${day}/${month}/${year}`
+                  const formattedTime = reading.reading_time.slice(0, 5)
 
-                return (
-                  <tr key={reading.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{formattedDate}</div>
-                      <div className="text-sm text-gray-500">{formattedTime}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        {getConditionIcon(reading.condition)}
-                        <span className="text-sm text-gray-900">
-                          {getConditionLabel(reading.condition, reading.reading_time)}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-bold text-gray-900">{reading.reading_value} mg/dL</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(status)}</td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-500 max-w-xs truncate">{reading.observations || "-"}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(reading)}>
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <DeleteReadingButton readingId={reading.id} onDataChange={onDataChange} />
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+                  return (
+                    <tr key={reading.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{formattedDate}</div>
+                        <div className="text-sm text-gray-500">{formattedTime}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          {getConditionIcon(reading.condition)}
+                          <span className="text-sm text-gray-900">
+                            {getConditionLabel(reading.condition, reading.reading_time)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-bold text-gray-900">{reading.reading_value} mg/dL</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(status)}</td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-500 max-w-xs truncate">{reading.observations || "-"}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button variant="ghost" size="icon" onClick={() => handleEdit(reading)} aria-label="Editar registro">
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <DeleteReadingButton readingId={reading.id} onDataChange={onDataChange} />
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <GlucoseTableMedical readings={readings} sortOrder={sortOrder} />
+        )}
 
         {/* Pagination */}
         <TablePagination

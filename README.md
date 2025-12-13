@@ -1,30 +1,93 @@
-# Glicemia App Design
+# Controle de Glicemia
+## 🩸 Monitoramento Simples e Eficaz
 
-*Automatically synced with your [v0.app](https://v0.app) deployments*
+Sistema moderno para acompanhamento de glicose, desenvolvido para ajudar diabéticos e cuidadores a manterem o controle da saúde de forma intuitiva e visual.
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/pedros-projects-5a7f1086/v0-glicemia-app-design)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.app-black?style=for-the-badge)](https://v0.app/chat/rUcV7vzy1qR)
+![Dashboard Preview](./public/preview-placeholder.png)
 
-## Overview
+## 🚀 Funcionalidades Principais
 
-This repository will stay in sync with your deployed chats on [v0.app](https://v0.app).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.app](https://v0.app).
+*   **Dashboard Intuitivo**: Visão geral com gráficos e estatísticas vitais.
+*   **Registro Rápido**: Adicione medições de glicemia em segundos com contexto (jejum, pós-refeição, etc.).
+*   **Calendário Médico**: Gerencie consultas, exames e vacinas. Sincronizado na nuvem (Supabase Storage).
+*   **Histórico Detalhado**: Tabela pesquisável e filtrável de todas as suas leituras.
+*   **Insights Visuais**: Gráficos de tendência para identificar padrões.
+*   **Gestão de Medicamentos**: Acompanhe o uso de insulina e outros medicamentos.
+*   **Alertas Inteligentes**: Feedback imediato para níveis altos (cetoacidose) ou baixos (hipoglicemia).
+*   **Acessibilidade**: Interface otimizada para leitores de tela e navegação por teclado.
 
-## Deployment
+## 🛠️ Tecnologias Utilizadas
 
-Your project is live at:
+Este projeto utiliza uma stack moderna e performática:
 
-**[https://vercel.com/pedros-projects-5a7f1086/v0-glicemia-app-design](https://vercel.com/pedros-projects-5a7f1086/v0-glicemia-app-design)**
+*   **Frontend**: [Next.js 14](https://nextjs.org/) (App Router), React, TypeScript per linter e typing.
+*   **Estilização**: Tailwind CSS + Shadcn/ui (Radix UI) para componentes acessíveis e bonitos.
+*   **Ícones**: Lucide React.
+*   **Gráficos**: Recharts.
+*   **Backend / Auth**: [Supabase](https://supabase.com/).
+*   **Persistência**: Supabase Database (PostgreSQL) e Storage (para arquivos JSON).
 
-## Build your app
+## ⚙️ Instalação e Configuração
 
-Continue building your app on:
+### Pré-requisitos
 
-**[https://v0.app/chat/rUcV7vzy1qR](https://v0.app/chat/rUcV7vzy1qR)**
+*   Node.js 18+
+*   Conta no Supabase
 
-## How It Works
+### Passo a Passo
 
-1. Create and modify your project using [v0.app](https://v0.app)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+1.  **Clone o repositório**
+    ```bash
+    git clone https://github.com/seu-usuario/controle-glicemia.git
+    cd controle-glicemia
+    ```
+
+2.  **Instale as dependências**
+    ```bash
+    npm install
+    # ou
+    pnpm install
+    ```
+
+3.  **Configure o Supabase**
+    *   Crie um projeto no Supabase.
+    *   Vá em **SQL Editor** e execute os scripts da pasta `scripts/`:
+        1.  `scripts/001_create_tables.sql` (Cria tabelas do banco)
+        2.  `scripts/002_setup_storage.sql` (Configura bucket de armazenamento)
+
+4.  **Configure as Variáveis de Ambiente**
+    *   Renomeie `.env.example` para `.env.local` (ou crie um novo).
+    *   Adicione suas chaves do Supabase:
+    ```env
+    NEXT_PUBLIC_SUPABASE_URL=sua_url_aqui
+    NEXT_PUBLIC_SUPABASE_ANON_KEY=sua_chave_anon_aqui
+    ```
+
+5.  **Rode o projeto**
+    ```bash
+    npm run dev
+    ```
+    Acesse `http://localhost:3000` 🚀
+
+## 📦 Storybook
+
+Para visualizar e testar os componentes de interface isoladamente:
+
+```bash
+npm run storybook
+``` 
+*(Necessário configurar Storybook primeiro)*
+
+## 🤝 Contribuição
+
+Contribuições são bem-vindas! Sinta-se à vontade para abrir Issues ou Pull Requests.
+
+1.  Fork o projeto
+2.  Crie sua Feature Branch (`git checkout -b feature/NovaFeature`)
+3.  Commit suas mudanças (`git commit -m 'Add some NovaFeature'`)
+4.  Push para a Branch (`git push origin feature/NovaFeature`)
+5.  Abra um Pull Request
+
+## 📄 Licença
+
+Este projeto é open-source. Sinta-se livre para usar e modificar.

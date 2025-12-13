@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts"
 import { format, parseISO } from "date-fns"
@@ -11,20 +12,22 @@ type Props = {
 }
 
 export function GlucoseChart({ readings }: Props) {
-  const chartData = [...readings]
-    .sort((a, b) => {
-      const dateA = new Date(`${a.reading_date}T${a.reading_time}`)
-      const dateB = new Date(`${b.reading_date}T${b.reading_time}`)
-      return dateA.getTime() - dateB.getTime()
-    })
-    .map((reading) => ({
-      date: reading.reading_date,
-      time: reading.reading_time,
-      value: reading.reading_value,
-      condition: reading.condition,
-      displayDate: format(parseISO(reading.reading_date), "dd/MMM", { locale: ptBR }),
-      fullDateTime: `${format(parseISO(reading.reading_date), "dd/MM/yyyy")} ${reading.reading_time.slice(0, 5)}`,
-    }))
+  const chartData = useMemo(() => {
+    return [...readings]
+      .sort((a, b) => {
+        const dateA = new Date(`${a.reading_date}T${a.reading_time}`)
+        const dateB = new Date(`${b.reading_date}T${b.reading_time}`)
+        return dateA.getTime() - dateB.getTime()
+      })
+      .map((reading) => ({
+        date: reading.reading_date,
+        time: reading.reading_time,
+        value: reading.reading_value,
+        condition: reading.condition,
+        displayDate: format(parseISO(reading.reading_date), "dd/MMM", { locale: ptBR }),
+        fullDateTime: `${format(parseISO(reading.reading_date), "dd/MM/yyyy")} ${reading.reading_time.slice(0, 5)}`,
+      }))
+  }, [readings])
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {

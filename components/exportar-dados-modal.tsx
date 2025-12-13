@@ -18,12 +18,14 @@ type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
   userId: string
+  sortOrder?: "asc" | "desc"
 }
 
-export function ExportarDadosModal({ open, onOpenChange, userId }: Props) {
+export function ExportarDadosModal({ open, onOpenChange, userId, sortOrder = "desc" }: Props) {
   const [startDate, setStartDate] = useState<Date>()
   const [endDate, setEndDate] = useState<Date>()
   const [formatType, setFormatType] = useState<"pdf" | "csv">("pdf")
+  const [exportModel, setExportModel] = useState<"standard" | "medical">("standard")
   const [isExporting, setIsExporting] = useState(false)
   const [includeMedications, setIncludeMedications] = useState(true)
   const { toast } = useToast()
@@ -51,8 +53,8 @@ export function ExportarDadosModal({ open, onOpenChange, userId }: Props) {
         .eq("user_id", userId)
         .gte("reading_date", format(startDate, "yyyy-MM-dd"))
         .lte("reading_date", format(endDate, "yyyy-MM-dd"))
-        .order("reading_date", { ascending: false })
-        .order("reading_time", { ascending: false })
+        .order("reading_date", { ascending: sortOrder === "asc" })
+        .order("reading_time", { ascending: sortOrder === "asc" })
 
       if (error) throw error
 
@@ -72,9 +74,17 @@ export function ExportarDadosModal({ open, onOpenChange, userId }: Props) {
       }
 
       if (formatType === "csv") {
-        exportAsCSV(readings || [], medications)
+        if (exportModel === "medical") {
+          exportMedicalCSV(readings || [], medications)
+        } else {
+          exportAsCSV(readings || [], medications)
+        }
       } else {
-        await exportAsPDF(readings || [], medications)
+        if (exportModel === "medical") {
+          await exportMedicalPDF(readings || [], medications)
+        } else {
+          await exportAsPDF(readings || [], medications)
+        }
       }
 
       toast({
@@ -92,6 +102,278 @@ export function ExportarDadosModal({ open, onOpenChange, userId }: Props) {
       })
     } finally {
       setIsExporting(false)
+    }
+  }
+
+  // Helper for grouping readings (duplicated from glucose-table-medical logic, consider moving to utils if time permits)
+  const groupReadingsByDate = (readings: any[]) => {
+    type DailyReadings = {
+      date: string
+      jejum?: any
+      posCafe?: any
+      preAlmoco?: any
+      posAlmoco?: any
+      preJantar?: any
+      posJantar?: any
+      madrugada?: any
+    }
+
+    const getSlot = (reading: any) => {
+      const { condition, reading_time } = reading
+      const hour = parseInt(reading_time.split(":")[0])
+      if (condition === "jejum") return "jejum"
+      if (condition === "ao_dormir") return "madrugada"
+      if (condition === "antes_refeicao") {
+        if (hour >= 5 && hour < 10) return "jejum"
+        if (hour >= 10 && hour < 14) return "preAlmoco"
+        if (hour >= 14 && hour < 23) return "preJantar"
+      }
+      if (condition === "apos_refeicao") {
+        if (hour >= 5 && hour < 12) return "posCafe"
+        if (hour >= 12 && hour < 16) return "posAlmoco"
+        if (hour >= 16 && hour < 23) return "posJantar"
+      }
+      if (hour >= 0 && hour < 5) return "madrugada"
+      return null
+    }
+
+    const grouped = readings.reduce((acc: any, reading: any) => {
+      const date = reading.reading_date
+      if (!acc[date]) acc[date] = { date }
+      const slot = getSlot(reading)
+      if (slot && !acc[date][slot]) acc[date][slot] = reading
+      return acc
+    }, {} as Record<string, DailyReadings>)
+
+    return Object.values(grouped).sort((a: any, b: any) => b.date.localeCompare(a.date))
+  }
+
+  const exportMedicalCSV = (readings: any[], medications: any[]) => {
+    const grouped = groupReadingsByDate(readings) as any[]
+    const headers = ["Data", "Jejum", "2h Pós Café", "Antes Almoço", "2h Pós Almoço", "Antes Jantar", "2h Pós Jantar", "Madrugada"]
+
+    const rows = grouped.map((day: any) => {
+      return [
+        format(new Date(day.date), "dd/MM/yyyy"),
+        day.jejum?.reading_value || "-",
+        day.posCafe?.reading_value || "-",
+        day.preAlmoco?.reading_value || "-",
+        day.posAlmoco?.reading_value || "-",
+        day.preJantar?.reading_value || "-",
+        day.posJantar?.reading_value || "-",
+        day.madrugada?.reading_value || "-"
+      ]
+    })
+
+    let csvContent = "\uFEFF" + [headers, ...rows].map((row) => row.map((cell) => `"${cell}"`).join(",")).join("\n")
+
+    if (medications.length > 0) {
+      csvContent += "\n\n"
+      csvContent += '"MEDICAÇÕES DE USO CONTÍNUO"\n'
+      csvContent += '"Nome","Tipo","Dosagem","Horário"\n'
+      medications.forEach((med) => {
+        const type = getMedicationTypeLabel(med.medication_type) || "Outro"
+        const dosage = `${med.continuous_dosage || med.dosage} ${med.continuous_dosage_unit || med.dosage_unit}`
+        csvContent += `"${med.medication_name}","${type}","${dosage}","${med.administration_time ? med.administration_time.slice(0, 5) : "-"}"\n`
+      })
+    }
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const link = document.createElement("a")
+    link.href = URL.createObjectURL(blob)
+    link.download = `diario-glicemia-${format(startDate!, "yyyy-MM-dd")}-ate-${format(endDate!, "yyyy-MM-dd")}.csv`
+    link.click()
+  }
+
+  const exportMedicalPDF = async (readings: any[], medications: any[]) => {
+    const avgGlucose =
+      readings.length > 0 ? (readings.reduce((sum: number, r: any) => sum + r.reading_value, 0) / readings.length).toFixed(1) : "0"
+
+    const groupedReadings = groupReadingsByDate(readings) as any[]
+
+    const chartImageData = await generateChartImage(readings)
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Diário de Glicemia</title>
+          <style>
+            @page { margin: 1cm; size: landscape; }
+            body { 
+              font-family: 'Segoe UI', Arial, sans-serif; 
+              padding: 20px;
+              color: #333;
+            }
+            .header {
+              border-bottom: 3px solid #0f766e;
+              padding-bottom: 20px;
+              margin-bottom: 30px;
+            }
+            h1 { 
+              color: #0f766e; 
+              margin: 0 0 10px 0;
+              font-size: 28px;
+            }
+            .period { 
+              color: #666; 
+              font-size: 14px;
+            }
+            table { 
+              width: 100%; 
+              border-collapse: collapse; 
+              margin-top: 20px;
+              font-size: 11px;
+            }
+            th, td { 
+              border: 1px solid #e2e8f0; 
+              padding: 6px; 
+              text-align: center; 
+            }
+            th { 
+              background-color: #0f766e; 
+              color: white; 
+              font-weight: 600;
+              padding: 8px;
+            }
+            tr:nth-child(even) { 
+              background-color: #f8fafc; 
+            }
+            .cell-value {
+              font-weight: bold;
+              display: block;
+              margin-bottom: 2px;
+            }
+            .cell-status {
+              font-size: 9px;
+              padding: 2px 4px;
+              border-radius: 4px;
+              display: inline-block;
+            }
+            .bg-low { background-color: #fef3c7; color: #92400e; }
+            .bg-normal { background-color: #dcfce7; color: #166534; }
+            .bg-attention { background-color: #fed7aa; color: #9a3412; }
+            .bg-high { background-color: #fee2e2; color: #991b1b; }
+            
+            .medications-section {
+              margin-top: 30px;
+              padding: 15px;
+              background: #f8fafc;
+              border: 1px solid #e2e8f0;
+              border-radius: 8px;
+              page-break-inside: avoid;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>📊 Diário de Glicemia</h1>
+            <p class="period">
+              Período: <strong>${format(startDate!, "dd/MM/yyyy")}</strong> até 
+              <strong>${format(endDate!, "dd/MM/yyyy")}</strong> | Média: ${avgGlucose} mg/dL
+            </p>
+          </div>
+
+          ${chartImageData
+        ? `
+          <div style="text-align: center; margin-bottom: 30px;">
+            <img src="${chartImageData}" style="max-width: 100%; height: auto; max-height: 300px; border: 1px solid #e2e8f0;" />
+          </div>
+          `
+        : ""
+      }
+
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 100px; text-align: left;">Data</th>
+                <th>Jejum</th>
+                <th>2h Pós Café</th>
+                <th>Antes Almoço</th>
+                <th>2h Pós Almoço</th>
+                <th>Antes Jantar</th>
+                <th>2h Pós Jantar</th>
+                <th>Madrugada</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${groupedReadings
+        .map((day) => {
+          const getCellHtml = (reading: any) => {
+            if (!reading) return "-"
+            const val = reading.reading_value
+            let cls = "bg-normal"
+            if (val < 70) cls = "bg-low"
+            else if (val > 140) cls = "bg-high"
+            else if (val > 99) cls = "bg-attention"
+
+            return `
+                      <div>
+                        <span class="cell-value">${val}</span>
+                      </div>
+                    `
+            // Note: Simplified logic for color, using inline styles on parent td might be better or span class
+          }
+
+          const getCellStyle = (reading: any) => {
+            if (!reading) return "";
+            const val = reading.reading_value;
+            if (val < 70) return "background-color: #fffbeb;";
+            if (val <= 99) return "background-color: #f0fdf4;";
+            if (val <= 140) return "background-color: #fff7ed;";
+            return "background-color: #fef2f2;";
+          }
+
+          return `
+                    <tr>
+                      <td style="text-align: left; font-weight: bold;">
+                        ${format(new Date(day.date), "dd/MM")} <span style="font-weight: normal; color: #666; font-size: 10px;">${format(new Date(day.date), "EEE", { locale: ptBR })}</span>
+                      </td>
+                      <td style="${getCellStyle(day.jejum)}">${getCellHtml(day.jejum)}</td>
+                      <td style="${getCellStyle(day.posCafe)}">${getCellHtml(day.posCafe)}</td>
+                      <td style="${getCellStyle(day.preAlmoco)}">${getCellHtml(day.preAlmoco)}</td>
+                      <td style="${getCellStyle(day.posAlmoco)}">${getCellHtml(day.posAlmoco)}</td>
+                      <td style="${getCellStyle(day.preJantar)}">${getCellHtml(day.preJantar)}</td>
+                      <td style="${getCellStyle(day.posJantar)}">${getCellHtml(day.posJantar)}</td>
+                      <td style="${getCellStyle(day.madrugada)}">${getCellHtml(day.madrugada)}</td>
+                    </tr>
+                  `
+        })
+        .join("")}
+            </tbody>
+          </table>
+          
+          ${medications.length > 0
+        ? `
+          <div class="medications-section">
+            <h3 style="color: #0f766e; margin-top: 0;">💊 Medicações</h3>
+            <ul style="margin: 0; padding-left: 20px; font-size: 12px;">
+            ${medications
+          .map((med) => {
+            const type = getMedicationTypeLabel(med.medication_type) || "Outro"
+            const dosage = `${med.continuous_dosage || med.dosage} ${med.continuous_dosage_unit || med.dosage_unit}`
+            const notes = med.notes ? ` - Obs: ${med.notes}` : ""
+            return `<li><strong>${med.medication_name}</strong> (${type}) - ${dosage}${notes}</li>`
+          })
+          .join("")}
+            </ul>
+          </div>
+          `
+        : ""
+      }
+        </body>
+      </html>
+    `
+
+    const printWindow = window.open("", "_blank")
+    if (printWindow) {
+      printWindow.document.write(html)
+      printWindow.document.close()
+      printWindow.focus()
+      setTimeout(() => {
+        printWindow.print()
+      }, 500)
     }
   }
 
@@ -115,11 +397,12 @@ export function ExportarDadosModal({ open, onOpenChange, userId }: Props) {
     if (medications.length > 0) {
       csvContent += "\n\n"
       csvContent += '"MEDICAÇÕES DE USO CONTÍNUO"\n'
-      csvContent += '"Nome","Tipo","Dosagem","Horário"\n'
+      csvContent += '"Nome","Tipo","Dosagem","Observações"\n'
       medications.forEach((med) => {
         const type = getMedicationTypeLabel(med.medication_type) || "Outro"
         const dosage = `${med.continuous_dosage || med.dosage} ${med.continuous_dosage_unit || med.dosage_unit}`
-        csvContent += `"${med.medication_name}","${type}","${dosage}","${med.administration_time ? med.administration_time.slice(0, 5) : "-"}"\n`
+        const notes = med.notes || ""
+        csvContent += `"${med.medication_name}","${type}","${dosage}","${notes}"\n`
       })
     }
 
@@ -323,41 +606,39 @@ export function ExportarDadosModal({ open, onOpenChange, userId }: Props) {
             </div>
           </div>
           
-          ${
-            medications.length > 0
-              ? `
+          ${medications.length > 0
+        ? `
           <div class="medications-section">
             <h2>💊 Medicações de Uso Contínuo</h2>
             ${medications
-              .map((med) => {
-                const type = getMedicationTypeLabel(med.medication_type) || "Outro"
-                const dosage = `${med.continuous_dosage || med.dosage} ${med.continuous_dosage_unit || med.dosage_unit}`
-                const time = med.administration_time ? ` às ${med.administration_time.slice(0, 5)}` : ""
-                return `
+          .map((med) => {
+            const type = getMedicationTypeLabel(med.medication_type) || "Outro"
+            const dosage = `${med.continuous_dosage || med.dosage} ${med.continuous_dosage_unit || med.dosage_unit}`
+            const notes = med.notes ? ` <br/><span style="font-style:italic">Obs: ${med.notes}</span>` : ""
+            return `
                   <div class="medication-item">
                     <div class="medication-name">${med.medication_name}</div>
                     <div class="medication-details">
-                      ${type} • ${dosage}${time}
+                      ${type} • ${dosage}${notes}
                     </div>
                   </div>
                 `
-              })
-              .join("")}
+          })
+          .join("")}
           </div>
           `
-              : ""
-          }
+        : ""
+      }
           
-          ${
-            chartImageData
-              ? `
+          ${chartImageData
+        ? `
           <div class="chart-container">
             <div class="chart-title">Gráfico de Evolução da Glicemia</div>
             <img src="${chartImageData}" alt="Gráfico de Glicemia" />
           </div>
           `
-              : ""
-          }
+        : ""
+      }
           
           <h2>📋 Histórico de Leituras</h2>
           
@@ -374,23 +655,23 @@ export function ExportarDadosModal({ open, onOpenChange, userId }: Props) {
             </thead>
             <tbody>
               ${readings
-                .map((r) => {
-                  const value = r.reading_value
-                  let statusClass = "status-normal"
-                  let statusText = "Normal"
+        .map((r) => {
+          const value = r.reading_value
+          let statusClass = "status-normal"
+          let statusText = "Normal"
 
-                  if (value < 70) {
-                    statusClass = "status-baixo"
-                    statusText = "Baixo"
-                  } else if (value > 140) {
-                    statusClass = "status-alto"
-                    statusText = "Alto"
-                  } else if (value > 99) {
-                    statusClass = "status-atencao"
-                    statusText = "Atenção"
-                  }
+          if (value < 70) {
+            statusClass = "status-baixo"
+            statusText = "Baixo"
+          } else if (value > 140) {
+            statusClass = "status-alto"
+            statusText = "Alto"
+          } else if (value > 99) {
+            statusClass = "status-atencao"
+            statusText = "Atenção"
+          }
 
-                  return `
+          return `
                     <tr>
                       <td>${format(new Date(r.reading_date), "dd/MM/yyyy")}</td>
                       <td>${r.reading_time.slice(0, 5)}</td>
@@ -400,8 +681,8 @@ export function ExportarDadosModal({ open, onOpenChange, userId }: Props) {
                       <td>${r.observations || "-"}</td>
                     </tr>
                   `
-                })
-                .join("")}
+        })
+        .join("")}
             </tbody>
           </table>
           
@@ -544,7 +825,7 @@ export function ExportarDadosModal({ open, onOpenChange, userId }: Props) {
         // Escolher alguns pontos para mostrar a data
         const numLabels = 5
         const step = Math.ceil((sortedReadings.length - 1) / (numLabels - 1)) || 1
-        
+
         ctx.fillStyle = "#6b7280"
         ctx.font = "10px Arial"
         ctx.textAlign = "center"
@@ -697,6 +978,55 @@ export function ExportarDadosModal({ open, onOpenChange, userId }: Props) {
             >
               Incluir medicações de uso contínuo na exportação
             </label>
+          </div>
+
+          {/* Modelo da Tabela */}
+          <div>
+            <label className="text-sm font-medium mb-3 block">Modelo da Tabela</label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setExportModel("standard")}
+                className={cn(
+                  "flex flex-col items-center justify-center p-3 md:p-4 border-2 rounded-lg transition-all",
+                  exportModel === "standard"
+                    ? "border-teal-600 bg-teal-50"
+                    : "border-gray-200 hover:border-gray-300 bg-white",
+                )}
+              >
+                <div className="flex flex-col gap-1 items-center">
+                  <div className="flex gap-1">
+                    <div className="w-6 h-1 bg-current rounded-full" />
+                  </div>
+                  <div className="flex gap-1">
+                    <div className="w-6 h-1 bg-current rounded-full" />
+                  </div>
+                  <div className="flex gap-1">
+                    <div className="w-6 h-1 bg-current rounded-full" />
+                  </div>
+                </div>
+                <span className="font-medium text-xs md:text-sm mt-2">Modelo Padrão</span>
+                <span className="text-[10px] md:text-xs text-gray-500 mt-1">Lista detalhada</span>
+              </button>
+
+              <button
+                onClick={() => setExportModel("medical")}
+                className={cn(
+                  "flex flex-col items-center justify-center p-3 md:p-4 border-2 rounded-lg transition-all",
+                  exportModel === "medical"
+                    ? "border-teal-600 bg-teal-50"
+                    : "border-gray-200 hover:border-gray-300 bg-white",
+                )}
+              >
+                <div className="grid grid-cols-2 gap-1 w-6">
+                  <div className="h-2 w-full bg-current rounded-sm"></div>
+                  <div className="h-2 w-full bg-current rounded-sm"></div>
+                  <div className="h-2 w-full bg-current rounded-sm"></div>
+                  <div className="h-2 w-full bg-current rounded-sm"></div>
+                </div>
+                <span className="font-medium text-xs md:text-sm mt-2">Modelo Médico</span>
+                <span className="text-[10px] md:text-xs text-gray-500 mt-1">Visão diária</span>
+              </button>
+            </div>
           </div>
 
           {/* Formato do Arquivo */}

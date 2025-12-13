@@ -104,7 +104,7 @@ export function NovoRegistroForm({ userId }: Props) {
           </div>
         </div>
         <Link href="/dashboard">
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" aria-label="Fechar formulário">
             <X className="w-5 h-5" />
           </Button>
         </Link>
@@ -154,6 +154,8 @@ export function NovoRegistroForm({ userId }: Props) {
                   key={cond.value}
                   type="button"
                   onClick={() => setCondition(cond.value)}
+                  aria-pressed={condition === cond.value}
+                  aria-label={`Selecionar condição: ${cond.label}`}
                   className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all ${condition === cond.value ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-gray-300"
                     }`}
                 >
@@ -192,10 +194,11 @@ export function NovoRegistroForm({ userId }: Props) {
                 placeholder="000"
                 className="text-6xl font-bold text-center w-48 h-24 text-gray-400 bg-white"
                 required
+                aria-describedby="glucose-helper-text"
               />
               <span className="text-2xl font-medium text-gray-500">mg/dL</span>
             </div>
-            <p className="text-center text-sm text-gray-500 mt-4">Valores normais de jejum: 70-99 mg/dL</p>
+            <p id="glucose-helper-text" className="text-center text-sm text-gray-500 mt-4">Valores normais de jejum: 70-99 mg/dL</p>
           </div>
         </div>
 
