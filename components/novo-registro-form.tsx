@@ -8,9 +8,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { X, Calendar, Clock, Droplet, Coffee, Utensils, Moon, MoreHorizontal, Save } from "lucide-react"
+import { X, Calendar, Clock, Droplet, Coffee, Utensils, Moon, MoreHorizontal, Save, Info } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { useToast } from "@/components/ui/use-toast"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 type Props = {
   userId: string
@@ -26,6 +28,7 @@ const conditions = [
 
 export function NovoRegistroForm({ userId }: Props) {
   const router = useRouter()
+  const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -44,10 +47,25 @@ export function NovoRegistroForm({ userId }: Props) {
     setIsLoading(true)
     setError(null)
 
-    if (!value || Number.parseInt(value) <= 0) {
+    const numValue = Number.parseInt(value)
+    if (!value || isNaN(numValue)) {
       setError("Por favor, insira um valor válido de glicemia")
       setIsLoading(false)
       return
+    }
+
+    if (numValue < 20 || numValue > 600) {
+      setError("O valor da glicemia deve estar entre 20 e 600 mg/dL")
+      setIsLoading(false)
+      return
+    }
+
+    if (numValue > 180) {
+      toast({
+        title: "Dica de Saúde",
+        description: "Glicemia alta? Lembre-se de beber água para ajudar a regular os níveis.",
+        duration: 5000,
+      })
     }
 
     try {
@@ -117,6 +135,16 @@ export function NovoRegistroForm({ userId }: Props) {
           <Label className="flex items-center gap-2">
             <Droplet className="w-4 h-4" />
             Condição / Evento
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="w-4 h-4 text-gray-400 cursor-pointer" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Selecione o momento da medição para melhor controle.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </Label>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             {conditions.map((cond) => {
@@ -139,8 +167,18 @@ export function NovoRegistroForm({ userId }: Props) {
 
         {/* Resultado da Glicemia */}
         <div className="space-y-2">
-          <Label htmlFor="value" className="text-base font-semibold uppercase text-gray-600">
+          <Label htmlFor="value" className="text-base font-semibold uppercase text-gray-600 flex items-center gap-2">
             Resultado da Glicemia
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Info className="w-4 h-4 text-gray-400 cursor-pointer" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Insira o valor exato mostrado no seu glicosímetro.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </Label>
           <div className="bg-gray-50 rounded-xl p-8">
             <div className="flex items-center justify-center gap-4">

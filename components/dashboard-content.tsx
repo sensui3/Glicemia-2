@@ -7,6 +7,7 @@ import { GlucoseStats } from "@/components/glucose-stats"
 import { DashboardClient } from "@/components/dashboard-client"
 import { GlucoseChart } from "@/components/glucose-chart"
 import { MedicacoesWidget } from "@/components/medicacoes-widget"
+import { MedicalCalendar } from "@/components/medical-calendar"
 import type { GlucoseReading } from "@/lib/types"
 
 type Props = {
@@ -137,6 +138,10 @@ export function DashboardContent({ userId, initialFilter, initialPage, customSta
       <GlucoseChart readings={chartReadings} />
 
       <MedicacoesWidget userId={userId} />
+
+      <div className="my-8">
+        <MedicalCalendar userId={userId} />
+      </div>
 
       {/* Table */}
       <GlucoseTable

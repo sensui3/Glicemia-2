@@ -1,11 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Activity, LayoutDashboard, Pill, Menu, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription } from "@/components/ui/sheet"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import { createClient } from "@/lib/supabase/client"
@@ -18,6 +18,16 @@ export function MobileMenu() {
   const pathname = usePathname()
   const router = useRouter()
   const { toast } = useToast()
+  const [isMounted, setIsMounted] = useState(false)
+
+  // Prevent hydration mismatch by ensuring component only renders on client
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  if (!isMounted) {
+    return null
+  }
 
   const navItems = [
     {
@@ -73,6 +83,9 @@ export function MobileMenu() {
             </div>
             <span className="font-semibold text-sm">Controle Glicemia</span>
           </SheetTitle>
+          <SheetDescription className="sr-only">
+            Menu de navegação principal para dispositivos móveis
+          </SheetDescription>
         </SheetHeader>
 
         <nav className="flex flex-col h-[calc(100%-80px)]">
