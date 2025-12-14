@@ -10,6 +10,24 @@ export type GlucoseReading = {
   updated_at: string
 }
 
+export type GlucoseLimits = {
+  fasting_min: number
+  fasting_max: number
+  post_meal_max: number
+  hypo_limit: number
+  hyper_limit: number
+}
+
+export type UserProfile = {
+  id: string
+  user_id: string
+  full_name: string | null
+  glucose_limits: GlucoseLimits
+  glucose_unit: "mg/dL" | "mmol/L"
+  created_at: string
+  updated_at: string
+}
+
 export type GlucoseStatus = "normal" | "alto" | "baixo" | "atencao"
 
 export function getGlucoseStatus(value: number, condition: string): GlucoseStatus {

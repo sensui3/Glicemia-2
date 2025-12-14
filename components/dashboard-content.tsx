@@ -31,12 +31,14 @@ export function DashboardContent({ userId, initialFilter, initialPage, customSta
   const [statsKey, setStatsKey] = useState(0)
   const [viewMode, setViewMode] = useState<"standard" | "medical">("standard")
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
+  const [periodFilter, setPeriodFilter] = useState("all")
+  const [tagFilter, setTagFilter] = useState("all")
 
   const ITEMS_PER_PAGE = 15
 
   useEffect(() => {
     loadData()
-  }, [filter, page, startDate, endDate, userId, viewMode, sortOrder])
+  }, [filter, page, startDate, endDate, userId, viewMode, sortOrder, periodFilter, tagFilter])
 
   const loadData = async () => {
     setLoading(true)
@@ -68,16 +70,36 @@ export function DashboardContent({ userId, initialFilter, initialPage, customSta
       }
     }
 
+    // Helper to apply advanced filters
+    const applyAdvancedFilters = (query: any) => {
+      if (periodFilter === "morning") {
+        query = query.gte("reading_time", "06:00:00").lt("reading_time", "12:00:00")
+      } else if (periodFilter === "afternoon") {
+        query = query.gte("reading_time", "12:00:00").lt("reading_time", "18:00:00")
+      } else if (periodFilter === "night") {
+        query = query.or("reading_time.gte.18:00:00,reading_time.lt.06:00:00")
+      }
+
+      if (tagFilter === "insulin") {
+        query = query.ilike("observations", "%insulina%")
+      }
+      return query
+    }
+
     if (viewMode === "medical") {
       // Logic for Medical View: Pagination by Day
       // 1. Get all dates in range
-      const { data: allDatesData } = await supabase
+      // IMPORTANT: We must apply filters here too, otherwise we might get pages with no matching readings
+      let dateQuery = supabase
         .from("glucose_readings")
         .select("reading_date")
         .eq("user_id", userId)
         .gte("reading_date", queryStartDate)
         .lte("reading_date", queryEndDate)
-        .order("reading_date", { ascending: sortOrder === "asc" })
+
+      dateQuery = applyAdvancedFilters(dateQuery)
+
+      const { data: allDatesData } = await dateQuery.order("reading_date", { ascending: sortOrder === "asc" })
 
       const uniqueDates = Array.from(new Set((allDatesData || []).map(d => d.reading_date)))
 
@@ -91,11 +113,15 @@ export function DashboardContent({ userId, initialFilter, initialPage, customSta
 
       if (pageDates.length > 0) {
         // 3. Fetch readings for these dates
-        const { data: readingsData } = await supabase
+        let readingsQuery = supabase
           .from("glucose_readings")
           .select("*")
           .eq("user_id", userId)
           .in("reading_date", pageDates)
+
+        readingsQuery = applyAdvancedFilters(readingsQuery)
+
+        const { data: readingsData } = await readingsQuery
           .order("reading_date", { ascending: sortOrder === "asc" })
           .order("reading_time", { ascending: sortOrder === "asc" })
 
@@ -106,22 +132,30 @@ export function DashboardContent({ userId, initialFilter, initialPage, customSta
 
     } else {
       // Standard Logic: Pagination by Reading
-      const { count } = await supabase
+      let countQuery = supabase
         .from("glucose_readings")
         .select("*", { count: "exact", head: true })
         .eq("user_id", userId)
         .gte("reading_date", queryStartDate)
         .lte("reading_date", queryEndDate)
 
+      countQuery = applyAdvancedFilters(countQuery)
+
+      const { count } = await countQuery
+
       setTotalPages(Math.ceil((count || 0) / ITEMS_PER_PAGE))
       setTotalItems(count || 0)
 
-      const { data: readingsData } = await supabase
+      let dataQuery = supabase
         .from("glucose_readings")
         .select("*")
         .eq("user_id", userId)
         .gte("reading_date", queryStartDate)
         .lte("reading_date", queryEndDate)
+
+      dataQuery = applyAdvancedFilters(dataQuery)
+
+      const { data: readingsData } = await dataQuery
         .order("reading_date", { ascending: sortOrder === "asc" })
         .order("reading_time", { ascending: sortOrder === "asc" })
         .range((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE - 1)
@@ -129,14 +163,17 @@ export function DashboardContent({ userId, initialFilter, initialPage, customSta
       setReadings((readingsData || []) as GlucoseReading[])
     }
 
-    // Chart data always needs all readings in range (or maybe downsampled, but usually all)
-    // We already query this separately
-    const { data: allReadingsForChart } = await supabase
+    // Chart data
+    let chartQuery = supabase
       .from("glucose_readings")
       .select("*")
       .eq("user_id", userId)
       .gte("reading_date", queryStartDate)
       .lte("reading_date", queryEndDate)
+
+    chartQuery = applyAdvancedFilters(chartQuery)
+
+    const { data: allReadingsForChart } = await chartQuery
       .order("reading_date", { ascending: true })
       .order("reading_time", { ascending: true })
 
@@ -168,6 +205,16 @@ export function DashboardContent({ userId, initialFilter, initialPage, customSta
 
   const handleSortChange = (order: "asc" | "desc") => {
     setSortOrder(order)
+  }
+
+  const handlePeriodFilterChange = (period: string) => {
+    setPeriodFilter(period)
+    setPage(1)
+  }
+
+  const handleTagFilterChange = (tag: string) => {
+    setTagFilter(tag)
+    setPage(1)
   }
 
   const handleDataChange = () => {
@@ -213,6 +260,10 @@ export function DashboardContent({ userId, initialFilter, initialPage, customSta
         onViewModeChange={handleViewModeChange}
         sortOrder={sortOrder}
         onSortChange={handleSortChange}
+        periodFilter={periodFilter}
+        onPeriodFilterChange={handlePeriodFilterChange}
+        tagFilter={tagFilter}
+        onTagFilterChange={handleTagFilterChange}
       />
     </div>
   )

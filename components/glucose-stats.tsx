@@ -2,11 +2,28 @@
 
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { TrendingUp, TrendingDown, Activity, Percent } from "lucide-react"
+import { TrendingUp, TrendingDown, Activity, Percent, Info } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
+import { format } from "date-fns"
+import { ptBR } from "date-fns/locale"
 
 type Props = {
   userId: string
   refreshKey?: number
+}
+
+type Hba1cPoint = {
+  date: string
+  value: number
+  formattedDate: string
 }
 
 export function GlucoseStats({ userId, refreshKey }: Props) {
@@ -15,6 +32,7 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
   const [lowest, setLowest] = useState<any>(null)
   const [trend, setTrend] = useState(0)
   const [hba1c, setHba1c] = useState<string | number>(0)
+  const [hba1cHistory, setHba1cHistory] = useState<Hba1cPoint[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -34,22 +52,26 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
     const fourteenDaysAgo = new Date()
     fourteenDaysAgo.setDate(now.getDate() - 14)
 
+    // Para o cálculo detalhado de histórico, precisamos de mais dados (ex: 6 meses + 90 dias de janela)
+    const oneEightyDaysAgo = new Date()
+    oneEightyDaysAgo.setDate(now.getDate() - 180)
+
     const ninetyDaysAgo = new Date()
     ninetyDaysAgo.setDate(now.getDate() - 90)
 
-    // Buscar dados dos últimos 90 dias (cobre todos os períodos necessários)
+    // Buscar dados dos últimos 180 dias para permitir trend line
     const { data: readings } = await supabase
       .from("glucose_readings")
       .select("*")
       .eq("user_id", userId)
-      .gte("reading_date", ninetyDaysAgo.toISOString().split("T")[0])
+      .gte("reading_date", oneEightyDaysAgo.toISOString().split("T")[0])
       .order("reading_date", { ascending: false })
       .order("reading_time", { ascending: false })
 
     const allReadings = readings || []
 
     // Filtrar dados para 7 dias (para Média, Alta, Baixa)
-    const sevenDayReadings = allReadings.filter(r => new Date(r.reading_date) >= sevenDaysAgo)
+    const sevenDayReadings = allReadings.filter((r) => new Date(r.reading_date) >= sevenDaysAgo)
 
     // Calcular média dos últimos 7 dias
     const avg =
@@ -72,12 +94,8 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
     setLowest(low)
 
     // Calcular tendência (comparar última semana com semana anterior)
-    const previousWeekReadings = allReadings.filter(r => {
+    const previousWeekReadings = allReadings.filter((r) => {
       const d = new Date(r.reading_date)
-      // Ajuste para pegar estritamente a semana anterior (entre 7 e 14 dias atrás)
-      // Nota: A lógica original usava query date ranges. 
-      // Comparando datas (yyyy-mm-dd) como strings ou objetos Date.
-      // Simplificação usando comparação de data.
       return d >= fourteenDaysAgo && d < sevenDaysAgo
     })
 
@@ -86,18 +104,51 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
         ? previousWeekReadings.reduce((sum, r) => sum + r.reading_value, 0) / previousWeekReadings.length
         : 0
 
-    const calculatedTrend = previousAverage > 0 ? Math.round(((avg - previousAverage) / previousAverage) * 100) : 0
+    const calculatedTrend =
+      previousAverage > 0 ? Math.round(((avg - previousAverage) / previousAverage) * 100) : 0
     setTrend(calculatedTrend)
 
-    // Calcular HbA1c estimada (baseada em 90 dias se disponível, ou o que tiver)
-    // Formula: (Média + 46.7) / 28.7
+    // Calcular HbA1c atual (baseada nos últimos 90 dias a partir de hoje)
+    const currentReadings90 = allReadings.filter((r) => new Date(r.reading_date) >= ninetyDaysAgo)
+
     const avg90 =
-      allReadings.length > 0
-        ? allReadings.reduce((sum, r) => sum + r.reading_value, 0) / allReadings.length
+      currentReadings90.length > 0
+        ? currentReadings90.reduce((sum, r) => sum + r.reading_value, 0) / currentReadings90.length
         : 0
 
     const estimatedA1c = avg90 > 0 ? ((avg90 + 46.7) / 28.7).toFixed(1) : 0
     setHba1c(estimatedA1c)
+
+    // Calcular histórico da HbA1c (pontos semanais para as últimas 12 semanas)
+    const history: Hba1cPoint[] = []
+    // Gerar 12 pontos (um a cada semana) até hoje
+    for (let i = 12; i >= 0; i--) {
+      const refDate = new Date()
+      refDate.setDate(refDate.getDate() - i * 7)
+
+      const windowStart = new Date(refDate)
+      windowStart.setDate(windowStart.getDate() - 90) // Janela de 90 dias para trás da data de referência
+
+      // Filtrar leituras para essa janela específica [windowStart, refDate]
+      const windowReadings = allReadings.filter((r) => {
+        const d = new Date(r.reading_date + "T" + r.reading_time) // Adicionar tempo para precisão se necessário, ou só data
+        // Simplificando comparação de datas strings 'YYYY-MM-DD'
+        const rDate = new Date(r.reading_date)
+        // Comparação de datas (ignorando horas para simplificar ou usando timestamp)
+        return rDate <= refDate && rDate >= windowStart
+      })
+
+      if (windowReadings.length > 0) {
+        const wAvg = windowReadings.reduce((sum, r) => sum + r.reading_value, 0) / windowReadings.length
+        const wA1c = (wAvg + 46.7) / 28.7
+        history.push({
+          date: refDate.toISOString().split("T")[0],
+          value: Number(wA1c.toFixed(1)),
+          formattedDate: format(refDate, "dd/MMM", { locale: ptBR }),
+        })
+      }
+    }
+    setHba1cHistory(history)
 
     setLoading(false)
   }
@@ -130,29 +181,102 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
           <span className="text-lg text-gray-500">mg/dL</span>
         </div>
         {trend !== 0 && (
-          <div className={`flex items-center gap-1 mt-2 text-sm ${trend > 0 ? "text-red-600" : "text-green-600"}`}>
+          <div
+            className={`flex items-center gap-1 mt-2 text-sm ${trend > 0 ? "text-red-600" : "text-green-600"}`}
+          >
             {trend > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
             <span>{Math.abs(trend)}% vs semana anterior</span>
           </div>
         )}
       </div>
 
-      {/* HbA1c Estimada */}
-      <div className="bg-white rounded-xl p-6 shadow-sm">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-gray-600">HbA1c ESTIMADA</span>
-          <div className="bg-purple-100 p-2 rounded-lg">
-            <Percent className="w-4 h-4 text-purple-700" />
+      {/* HbA1c Estimada com Modal */}
+      <Dialog>
+        <DialogTrigger asChild>
+          <div className="bg-white rounded-xl p-6 shadow-sm cursor-pointer transition-all hover:shadow-md border border-transparent hover:border-purple-200 group">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-gray-600 group-hover:text-purple-700 transition-colors">
+                HbA1c ESTIMADA
+              </span>
+              <div className="bg-purple-100 p-2 rounded-lg group-hover:bg-purple-200 transition-colors">
+                <Percent className="w-4 h-4 text-purple-700" />
+              </div>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-4xl font-bold">{hba1c}</span>
+              <span className="text-lg text-gray-500">%</span>
+            </div>
+            <div className="flex items-center gap-1 mt-2 text-sm text-gray-500 group-hover:text-purple-600">
+              <Info className="w-3 h-3" />
+              <span>Ver histórico</span>
+            </div>
           </div>
-        </div>
-        <div className="flex items-baseline gap-2">
-          <span className="text-4xl font-bold">{hba1c}</span>
-          <span className="text-lg text-gray-500">%</span>
-        </div>
-        <p className="text-sm text-gray-500 mt-2">
-          Baseado nos últimos 90 dias
-        </p>
-      </div>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Histórico de HbA1c Estimada</DialogTitle>
+            <DialogDescription>
+              Acompanhamento da evolução da sua Hemoglobina Glicada estimada.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-4">
+            <div className="h-[300px] w-full">
+              {hba1cHistory.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={hba1cHistory}>
+                    <defs>
+                      <linearGradient id="colorA1c" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#9333ea" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#9333ea" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis
+                      dataKey="formattedDate"
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                    />
+                    <YAxis
+                      domain={['dataMin - 0.5', 'dataMax + 0.5']}
+                      fontSize={12}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(value) => `${value}%`}
+                    />
+                    <Tooltip
+                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      formatter={(value: number) => [`${value}%`, "HbA1c"]}
+                      labelFormatter={(label) => `Semana de ${label}`}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="value"
+                      stroke="#9333ea"
+                      strokeWidth={2}
+                      fillOpacity={1}
+                      fill="url(#colorA1c)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                  Dados insuficientes para gerar histórico
+                </div>
+              )}
+            </div>
+            <div className="mt-4 text-sm text-gray-500 bg-gray-50 p-4 rounded-lg">
+              <p className="font-semibold mb-1">Sobre este cálculo:</p>
+              <p>
+                A HbA1c estimada é calculada com base na média das suas leituras de glicose.
+                Cada ponto no gráfico representa uma estimativa baseada nos 90 dias anteriores àquela data.
+                Valores ideais para diabéticos geralmente estão abaixo de 7.0%.
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Maior Leitura */}
       <div className="bg-white rounded-xl p-6 shadow-sm">

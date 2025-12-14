@@ -32,6 +32,11 @@ export function MedicalCalendar({ userId }: Props) {
     const [newEventTitle, setNewEventTitle] = useState("")
     const [newEventTime, setNewEventTime] = useState("")
     const [newEventType, setNewEventType] = useState<"consulta" | "exame" | "vacina" | "outro">("consulta")
+    const [isMounted, setIsMounted] = useState(false)
+
+    useEffect(() => {
+        setIsMounted(true)
+    }, [])
 
     useEffect(() => {
         loadEvents()
@@ -215,17 +220,21 @@ export function MedicalCalendar({ userId }: Props) {
                                     />
                                 </div>
                                 <div className="flex-1">
-                                    <Select value={newEventType} onValueChange={(v: any) => setNewEventType(v)}>
-                                        <SelectTrigger className="bg-white">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="consulta">Consulta</SelectItem>
-                                            <SelectItem value="exame">Exame</SelectItem>
-                                            <SelectItem value="vacina">Vacina</SelectItem>
-                                            <SelectItem value="outro">Outro</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                                    {isMounted ? (
+                                        <Select value={newEventType} onValueChange={(v: any) => setNewEventType(v)}>
+                                            <SelectTrigger className="bg-white">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="consulta">Consulta</SelectItem>
+                                                <SelectItem value="exame">Exame</SelectItem>
+                                                <SelectItem value="vacina">Vacina</SelectItem>
+                                                <SelectItem value="outro">Outro</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    ) : (
+                                        <div className="h-9 w-full bg-white border border-input rounded-md" />
+                                    )}
                                 </div>
                                 <Button onClick={handleAddEvent} className="bg-indigo-600 hover:bg-indigo-700">
                                     Adicionar

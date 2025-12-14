@@ -1,22 +1,41 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2 } from "lucide-react"
+import { Loader2, Download, HelpCircle, RotateCcw, ExternalLink } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { AlterarSenhaModal } from "./alterar-senha-modal"
+import { GlucoseLimits } from "@/lib/types"
 
 type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
+const DEFAULT_LIMITS: GlucoseLimits = {
+  fasting_min: 70,
+  fasting_max: 99,
+  post_meal_max: 140,
+  hypo_limit: 70,
+  hyper_limit: 180
+}
+
 export function ConfiguracoesModal({ open, onOpenChange }: Props) {
   const [email, setEmail] = useState("")
+  const [fullName, setFullName] = useState("")
+  const [glucoseUnit, setGlucoseUnit] = useState<"mg/dL" | "mmol/L">("mg/dL")
+  const [limits, setLimits] = useState<GlucoseLimits>(DEFAULT_LIMITS)
+
   const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
+
   const { toast } = useToast()
 
   useEffect(() => {
@@ -28,76 +47,342 @@ export function ConfiguracoesModal({ open, onOpenChange }: Props) {
   const loadUserData = async () => {
     setIsLoading(true)
     const supabase = createClient()
-    const { data } = await supabase.auth.getUser()
-    if (data.user) {
-      setEmail(data.user.email || "")
+
+    // Get Auth User
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (user) {
+      setEmail(user.email || "")
+
+      // Get Profile Data
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single()
+
+      if (profile) {
+        setFullName(profile.full_name || "")
+        if (profile.glucose_limits) {
+          setLimits(profile.glucose_limits as GlucoseLimits)
+        }
+        if (profile.glucose_unit) {
+          setGlucoseUnit(profile.glucose_unit)
+        }
+      }
     }
     setIsLoading(false)
   }
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle className="text-xl">Configurações</DialogTitle>
-          <DialogDescription>Gerencie as configurações da sua conta</DialogDescription>
-        </DialogHeader>
+  const handleSave = async () => {
+    setIsSaving(true)
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
 
-        <div className="space-y-6 py-4">
+    if (!user) {
+      setIsSaving(false)
+      return
+    }
+
+    const { error } = await supabase
+      .from('profiles')
+      .upsert({
+        user_id: user.id,
+        full_name: fullName,
+        glucose_limits: limits,
+        glucose_unit: glucoseUnit,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id' })
+
+    if (error) {
+      toast({
+        title: "Erro ao salvar",
+        description: error.message,
+        variant: "destructive"
+      })
+    } else {
+      toast({
+        title: "Configurações salvas",
+        description: "Suas preferências foram atualizadas com sucesso."
+      })
+      onOpenChange(false)
+    }
+    setIsSaving(false)
+  }
+
+  const handleRestoreDefaults = () => {
+    setLimits(DEFAULT_LIMITS)
+    toast({
+      title: "Valores restaurados",
+      description: "Os valores de referência voltaram ao padrão do sistema."
+    })
+  }
+
+  const handleExportData = async () => {
+    setIsExporting(true)
+    try {
+      const supabase = createClient()
+      const { data: readings, error } = await supabase
+        .from('glucose_readings')
+        .select('*')
+        .order('reading_date', { ascending: false })
+        .order('reading_time', { ascending: false })
+
+      if (error) throw error
+
+      if (!readings || readings.length === 0) {
+        toast({
+          title: "Sem dados",
+          description: "Não há registros para exportar.",
+          variant: "destructive"
+        })
+        return
+      }
+
+      // Create CSV content
+      const headers = ["Data", "Hora", "Valor", "Unidade", "Momento", "Observações"]
+      const csvContent = [
+        headers.join(","),
+        ...readings.map(r => [
+          r.reading_date,
+          r.reading_time,
+          r.reading_value,
+          "mg/dL", // Currently assuming stored as mg/dL
+          r.condition,
+          `"${(r.observations || "").replace(/"/g, '""')}"`
+        ].join(","))
+      ].join("\n")
+
+      // Create and trigger download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.setAttribute("href", url)
+      link.setAttribute("download", `glicemia_export_${new Date().toISOString().split('T')[0]}.csv`)
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+    } catch (error: any) {
+      toast({
+        title: "Erro na exportação",
+        description: error.message,
+        variant: "destructive"
+      })
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Configurações</DialogTitle>
+            <DialogDescription>Gerencie perfil, metas e dados do sistema</DialogDescription>
+          </DialogHeader>
+
           {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin text-teal-600" />
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           ) : (
-            <>
-              {/* Informações da Conta */}
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" value={email} disabled className="mt-1.5" />
-                  <p className="text-xs text-gray-500 mt-1">O email não pode ser alterado no momento</p>
-                </div>
-              </div>
+            <div className="space-y-8 py-4">
 
-              {/* Valores de Referência */}
-              <div className="space-y-3 pt-4 border-t">
-                <h3 className="font-medium text-sm">Valores de Referência</h3>
-                <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Jejum (Normal):</span>
-                    <span className="font-medium">70-99 mg/dL</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Jejum (Pré-diabetes):</span>
-                    <span className="font-medium">100-125 mg/dL</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Jejum (Diabetes):</span>
-                    <span className="font-medium">≥126 mg/dL</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Após refeição (Normal):</span>
-                    <span className="font-medium">&lt;140 mg/dL</span>
-                  </div>
+              {/* Seção 1: Conta e Perfil */}
+              <section className="space-y-4">
+                <div className="flex items-center justify-between border-b pb-2">
+                  <h3 className="font-semibold text-lg text-gray-900">Conta e Perfil</h3>
                 </div>
-              </div>
 
-              {/* Informações do App */}
-              <div className="space-y-2 pt-4 border-t">
-                <h3 className="font-medium text-sm">Sobre o App</h3>
-                <div className="text-sm text-gray-600 space-y-1">
-                  <p>Versão: 1.0.0</p>
-                  <p>Controle de Glicemia</p>
+                <div className="grid gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" value={email} disabled className="bg-gray-50 text-gray-500" />
+                    <p className="text-[11px] text-gray-500">O e-mail não pode ser alterado no momento.</p>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="fullname">Nome Completo</Label>
+                    <Input
+                      id="fullname"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="Seu nome"
+                    />
+                  </div>
+
+                  <div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowPasswordModal(true)}
+                    >
+                      Alterar Senha
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </>
+              </section>
+
+              {/* Seção 2: Valores de Referência e Metas */}
+              <section className="space-y-4">
+                <div className="flex items-center justify-between border-b pb-2">
+                  <h3 className="font-semibold text-lg text-gray-900">Valores de Referência e Metas</h3>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-2">
+                    <Label htmlFor="fasting_min">Jejum (Mínimo)</Label>
+                    <div className="relative">
+                      <Input
+                        id="fasting_min"
+                        type="number"
+                        value={limits.fasting_min}
+                        onChange={(e) => setLimits({ ...limits, fasting_min: Number(e.target.value) })}
+                      />
+                      <span className="absolute right-3 top-2.5 text-xs text-gray-500">mg/dL</span>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="fasting_max">Jejum (Máximo)</Label>
+                    <div className="relative">
+                      <Input
+                        id="fasting_max"
+                        type="number"
+                        value={limits.fasting_max}
+                        onChange={(e) => setLimits({ ...limits, fasting_max: Number(e.target.value) })}
+                      />
+                      <span className="absolute right-3 top-2.5 text-xs text-gray-500">mg/dL</span>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="post_meal">Pós-refeição (Máximo)</Label>
+                    <div className="relative">
+                      <Input
+                        id="post_meal"
+                        type="number"
+                        value={limits.post_meal_max}
+                        onChange={(e) => setLimits({ ...limits, post_meal_max: Number(e.target.value) })}
+                      />
+                      <span className="absolute right-3 top-2.5 text-xs text-gray-500">mg/dL</span>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="hypo">Hipoglicemia (Inferior)</Label>
+                    <div className="relative">
+                      <Input
+                        id="hypo"
+                        type="number"
+                        value={limits.hypo_limit}
+                        onChange={(e) => setLimits({ ...limits, hypo_limit: Number(e.target.value) })}
+                        className="border-red-200 focus:border-red-400 focus:ring-red-400"
+                      />
+                      <span className="absolute right-3 top-2.5 text-xs text-gray-500">mg/dL</span>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label htmlFor="hyper">Hiperglicemia (Superior)</Label>
+                    <div className="relative">
+                      <Input
+                        id="hyper"
+                        type="number"
+                        value={limits.hyper_limit}
+                        onChange={(e) => setLimits({ ...limits, hyper_limit: Number(e.target.value) })}
+                        className="border-orange-200 focus:border-orange-400 focus:ring-orange-400"
+                      />
+                      <span className="absolute right-3 top-2.5 text-xs text-gray-500">mg/dL</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRestoreDefaults}
+                    className="text-gray-500 hover:text-gray-900 h-8 px-2"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 mr-2" />
+                    Restaurar Valores Padrão
+                  </Button>
+                </div>
+              </section>
+
+              {/* Seção 3: Configurações do Sistema e Dados */}
+              <section className="space-y-4">
+                <div className="flex items-center justify-between border-b pb-2">
+                  <h3 className="font-semibold text-lg text-gray-900">Configurações do Sistema e Dados</h3>
+                </div>
+
+                <div className="grid gap-6">
+                  <div className="grid gap-2">
+                    <Label>Unidade de Glicemia</Label>
+                    <Select
+                      value={glucoseUnit}
+                      onValueChange={(val: "mg/dL" | "mmol/L") => setGlucoseUnit(val)}
+                    >
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="mg/dL">mg/dL</SelectItem>
+                        <SelectItem value="mmol/L">mmol/L</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label>Exportação de Dados</Label>
+                    <div>
+                      <Button onClick={handleExportData} disabled={isExporting} className="w-full sm:w-auto">
+                        {isExporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+                        Exportar Relatório (.CSV)
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 pt-2">
+                    <Label>Sobre o App</Label>
+                    <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-600 flex justify-between items-center">
+                      <span>Versão 1.0.0</span>
+                      <a
+                        href="#"
+                        className="flex items-center text-blue-600 hover:underline"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          toast({ description: "FAQ indisponível no momento." }) // Placeholder
+                        }}
+                      >
+                        <HelpCircle className="w-3.5 h-3.5 mr-1.5" />
+                        Ajuda e Suporte
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+            </div>
           )}
-        </div>
 
-        <div className="flex justify-end pt-4 border-t">
-          <Button onClick={() => onOpenChange(false)}>Fechar</Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+          <DialogFooter className="gap-2 sm:gap-0 border-t pt-4">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSave} disabled={isSaving || isLoading} className="bg-teal-600 hover:bg-teal-700">
+              {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Salvar Alterações
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlterarSenhaModal open={showPasswordModal} onOpenChange={setShowPasswordModal} />
+    </>
   )
 }

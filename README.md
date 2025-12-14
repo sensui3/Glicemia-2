@@ -12,7 +12,12 @@ Sistema moderno para acompanhamento de glicose, desenvolvido para ajudar diabét
 *   **Calendário Médico**: Gerencie consultas, exames e vacinas. Sincronizado na nuvem (Supabase Storage).
 *   **Histórico Detalhado**: Tabela pesquisável e filtrável de todas as suas leituras.
 *   **Insights Visuais**: Gráficos de tendência para identificar padrões.
-*   **Gestão de Medicamentos**: Acompanhe o uso de insulina e outros medicamentos.
+*   **Gestão de Medicamentos**: Acompanhe o uso de insulina e outros medicamentos com suporte a medicações contínuas.
+*   **Gestão de Médicos**: Cadastre e organize informações dos seus profissionais de saúde.
+*   **Autenticação Seguro**: Sistema completo de login, cadastro e verificação de email.
+*   **Tema Personalizável**: Suporte a temas claro e escuro.
+*   **Exportação de Dados**: Exporte seus registros para análise externa.
+*   **Design Responsivo**: Interface otimizada para desktop e dispositivos móveis.
 *   **Alertas Inteligentes**: Feedback imediato para níveis altos (cetoacidose) ou baixos (hipoglicemia).
 *   **Acessibilidade**: Interface otimizada para leitores de tela e navegação por teclado.
 
@@ -20,12 +25,13 @@ Sistema moderno para acompanhamento de glicose, desenvolvido para ajudar diabét
 
 Este projeto utiliza uma stack moderna e performática:
 
-*   **Frontend**: [Next.js 14](https://nextjs.org/) (App Router), React, TypeScript per linter e typing.
+*   **Frontend**: [Next.js 16](https://nextjs.org/) (App Router), React, TypeScript per linter e typing.
 *   **Estilização**: Tailwind CSS + Shadcn/ui (Radix UI) para componentes acessíveis e bonitos.
 *   **Ícones**: Lucide React.
 *   **Gráficos**: Recharts.
 *   **Backend / Auth**: [Supabase](https://supabase.com/).
 *   **Persistência**: Supabase Database (PostgreSQL) e Storage (para arquivos JSON).
+*   **Testes e Documentação**: Storybook para desenvolvimento de componentes.
 
 ## ⚙️ Instalação e Configuração
 
@@ -75,8 +81,7 @@ Para visualizar e testar os componentes de interface isoladamente:
 
 ```bash
 npm run storybook
-``` 
-*(Necessário configurar Storybook primeiro)*
+```
 
 ## 🤝 Contribuição
 

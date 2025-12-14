@@ -23,6 +23,10 @@ type Props = {
   onViewModeChange: (mode: "standard" | "medical") => void
   sortOrder: "asc" | "desc"
   onSortChange: (order: "asc" | "desc") => void
+  periodFilter: string
+  onPeriodFilterChange: (period: string) => void
+  tagFilter: string
+  onTagFilterChange: (tag: string) => void
 }
 
 function getConditionIcon(condition: string) {
@@ -110,6 +114,10 @@ export function GlucoseTable({
   onViewModeChange,
   sortOrder,
   onSortChange,
+  periodFilter,
+  onPeriodFilterChange,
+  tagFilter,
+  onTagFilterChange,
 }: Props) {
   const [editingReading, setEditingReading] = useState<GlucoseReading | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -124,7 +132,14 @@ export function GlucoseTable({
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         {/* Filters */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4 border-b border-gray-100">
-          <TableFilters currentFilter={currentFilter} onFilterChange={onFilterChange} />
+          <TableFilters
+            currentFilter={currentFilter}
+            onFilterChange={onFilterChange}
+            periodFilter={periodFilter}
+            onPeriodFilterChange={onPeriodFilterChange}
+            tagFilter={tagFilter}
+            onTagFilterChange={onTagFilterChange}
+          />
 
           <div className="flex items-center gap-2">
             <div className="flex items-center bg-gray-100 p-1 rounded-lg">
