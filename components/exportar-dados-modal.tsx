@@ -13,6 +13,7 @@ import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { Checkbox } from "@/components/ui/checkbox"
 import { getMedicationTypeLabel } from "@/lib/types"
+import { useUserProfile } from "@/hooks/use-user-profile"
 
 type Props = {
   open: boolean
@@ -30,6 +31,8 @@ export function ExportarDadosModal({ open, onOpenChange, userId, sortOrder = "de
   const [includeMedications, setIncludeMedications] = useState(true)
   const { toast } = useToast()
   const chartRef = useRef<HTMLCanvasElement>(null)
+  const { data: userProfile } = useUserProfile(userId)
+  const limits = userProfile?.glucose_limits
 
   const handleExport = async () => {
     if (!startDate || !endDate) {
@@ -46,7 +49,7 @@ export function ExportarDadosModal({ open, onOpenChange, userId, sortOrder = "de
     try {
       const supabase = createClient()
 
-      // Buscar leituras
+      // Buscar leituras para o relatório
       const { data: readings, error } = await supabase
         .from("glucose_readings")
         .select("*")
@@ -57,6 +60,22 @@ export function ExportarDadosModal({ open, onOpenChange, userId, sortOrder = "de
         .order("reading_time", { ascending: sortOrder === "asc" })
 
       if (error) throw error
+
+      // Buscar leituras para HbA1c (últimos 90 dias a partir da data final)
+      const hba1cStartDate = new Date(endDate)
+      hba1cStartDate.setDate(hba1cStartDate.getDate() - 90)
+
+      const { data: hba1cReadings } = await supabase
+        .from("glucose_readings")
+        .select("reading_value")
+        .eq("user_id", userId)
+        .gte("reading_date", format(hba1cStartDate, "yyyy-MM-dd"))
+        .lte("reading_date", format(endDate, "yyyy-MM-dd"))
+
+      const hba1cAvg = hba1cReadings && hba1cReadings.length > 0
+        ? hba1cReadings.reduce((sum, r) => sum + r.reading_value, 0) / hba1cReadings.length
+        : 0
+      const hba1cValue = hba1cAvg > 0 ? ((hba1cAvg + 46.7) / 28.7).toFixed(1) : "-"
 
       let medications: any[] = []
       if (includeMedications) {
@@ -81,7 +100,7 @@ export function ExportarDadosModal({ open, onOpenChange, userId, sortOrder = "de
         }
       } else {
         if (exportModel === "medical") {
-          await exportMedicalPDF(readings || [], medications)
+          await exportMedicalPDF(readings || [], medications, hba1cValue)
         } else {
           await exportAsPDF(readings || [], medications)
         }
@@ -185,7 +204,7 @@ export function ExportarDadosModal({ open, onOpenChange, userId, sortOrder = "de
     link.click()
   }
 
-  const exportMedicalPDF = async (readings: any[], medications: any[]) => {
+  const exportMedicalPDF = async (readings: any[], medications: any[], hba1cValue: string) => {
     const avgGlucose =
       readings.length > 0 ? (readings.reduce((sum: number, r: any) => sum + r.reading_value, 0) / readings.length).toFixed(1) : "0"
 
@@ -200,7 +219,7 @@ export function ExportarDadosModal({ open, onOpenChange, userId, sortOrder = "de
           <meta charset="UTF-8">
           <title>Diário de Glicemia</title>
           <style>
-            @page { margin: 1cm; size: landscape; }
+            @page { margin: 1cm; margin-top: 2cm; size: landscape; }
             body { 
               font-family: 'Segoe UI', Arial, sans-serif; 
               padding: 20px;
@@ -224,18 +243,18 @@ export function ExportarDadosModal({ open, onOpenChange, userId, sortOrder = "de
               width: 100%; 
               border-collapse: collapse; 
               margin-top: 20px;
-              font-size: 11px;
+              font-size: 13px;
             }
             th, td { 
               border: 1px solid #e2e8f0; 
-              padding: 6px; 
+              padding: 12px;
               text-align: center; 
             }
             th { 
               background-color: #0f766e; 
               color: white; 
               font-weight: 600;
-              padding: 8px;
+              padding: 12px;
             }
             tr:nth-child(even) { 
               background-color: #f8fafc; 
@@ -244,6 +263,7 @@ export function ExportarDadosModal({ open, onOpenChange, userId, sortOrder = "de
               font-weight: bold;
               display: block;
               margin-bottom: 2px;
+              font-size: 14px;
             }
             .cell-status {
               font-size: 9px;
@@ -264,6 +284,30 @@ export function ExportarDadosModal({ open, onOpenChange, userId, sortOrder = "de
               border-radius: 8px;
               page-break-inside: avoid;
             }
+            .layout-table {
+              width: 100%;
+              border: none;
+              margin-bottom: 30px;
+              border-collapse: collapse;
+            }
+            .layout-table td {
+              border: none;
+              padding: 0;
+              vertical-align: top;
+            }
+            .stats-box {
+               background: #f8fafc;
+               border: 1px solid #e2e8f0;
+               border-radius: 8px;
+               padding: 20px;
+               text-align: center;
+               height: 100%;
+               display: flex;
+               flex-direction: column;
+               justify-content: center;
+               align-items: center;
+               box-sizing: border-box;
+            }
           </style>
         </head>
         <body>
@@ -277,9 +321,20 @@ export function ExportarDadosModal({ open, onOpenChange, userId, sortOrder = "de
 
           ${chartImageData
         ? `
-          <div style="text-align: center; margin-bottom: 30px;">
-            <img src="${chartImageData}" style="max-width: 100%; height: auto; max-height: 300px; border: 1px solid #e2e8f0;" />
-          </div>
+          <table class="layout-table">
+            <tr>
+              <td style="padding-right: 20px; width: 75%;">
+                 <img src="${chartImageData}" style="width: 100%; height: auto; max-height: 350px; border: 1px solid #e2e8f0; border-radius: 8px;" />
+              </td>
+              <td style="width: 25%;">
+                 <div class="stats-box">
+                    <div style="font-size: 14px; color: #64748b; margin-bottom: 10px; font-weight: 600;">HbA1c Estimada</div>
+                    <div style="font-size: 42px; font-weight: bold; color: #7e22ce;">${hba1cValue}%</div>
+                    <div style="font-size: 11px; color: #94a3b8; margin-top: 5px;">Baseado nos últimos 3 meses</div>
+                 </div>
+              </td>
+            </tr>
+          </table>
           `
         : ""
       }
@@ -303,32 +358,39 @@ export function ExportarDadosModal({ open, onOpenChange, userId, sortOrder = "de
           const getCellHtml = (reading: any) => {
             if (!reading) return "-"
             const val = reading.reading_value
+            const hypo = limits?.hypo_limit ?? 70
+            const fastingMax = limits?.fasting_max ?? 99
+            const postMealMax = limits?.post_meal_max ?? 140
+
             let cls = "bg-normal"
-            if (val < 70) cls = "bg-low"
-            else if (val > 140) cls = "bg-high"
-            else if (val > 99) cls = "bg-attention"
+            if (val < hypo) cls = "bg-low"
+            else if (val > postMealMax) cls = "bg-high"
+            else if (val > fastingMax) cls = "bg-attention"
 
             return `
                       <div>
                         <span class="cell-value">${val}</span>
                       </div>
                     `
-            // Note: Simplified logic for color, using inline styles on parent td might be better or span class
           }
 
           const getCellStyle = (reading: any) => {
             if (!reading) return "";
             const val = reading.reading_value;
-            if (val < 70) return "background-color: #fffbeb;";
-            if (val <= 99) return "background-color: #f0fdf4;";
-            if (val <= 140) return "background-color: #fff7ed;";
+            const hypo = limits?.hypo_limit ?? 70
+            const fastingMax = limits?.fasting_max ?? 99
+            const postMealMax = limits?.post_meal_max ?? 140
+
+            if (val < hypo) return "background-color: #fffbeb;";
+            if (val <= fastingMax) return "background-color: #f0fdf4;";
+            if (val <= postMealMax) return "background-color: #fff7ed;";
             return "background-color: #fef2f2;";
           }
 
           return `
                     <tr>
                       <td style="text-align: left; font-weight: bold;">
-                        ${format(new Date(day.date), "dd/MM")} <span style="font-weight: normal; color: #666; font-size: 10px;">${format(new Date(day.date), "EEE", { locale: ptBR })}</span>
+                        ${format(new Date(day.date), "dd/MM")} <span style="font-weight: normal; color: #666; font-size: 11px;">${format(new Date(day.date), "EEE", { locale: ptBR })}</span>
                       </td>
                       <td style="${getCellStyle(day.jejum)}">${getCellHtml(day.jejum)}</td>
                       <td style="${getCellStyle(day.posCafe)}">${getCellHtml(day.posCafe)}</td>
@@ -348,7 +410,7 @@ export function ExportarDadosModal({ open, onOpenChange, userId, sortOrder = "de
         ? `
           <div class="medications-section">
             <h3 style="color: #0f766e; margin-top: 0;">💊 Medicações</h3>
-            <ul style="margin: 0; padding-left: 20px; font-size: 12px;">
+            <ul style="margin: 0; padding-left: 20px; font-size: 13px;">
             ${medications
           .map((med) => {
             const type = getMedicationTypeLabel(med.medication_type) || "Outro"
@@ -380,8 +442,12 @@ export function ExportarDadosModal({ open, onOpenChange, userId, sortOrder = "de
   const exportAsCSV = (readings: any[], medications: any[]) => {
     const headers = ["Data", "Hora", "Condição", "Glicemia (mg/dL)", "Status", "Observações"]
     const rows = readings.map((r) => {
+      const hypo = limits?.hypo_limit ?? 70
+      const fastingMax = limits?.fasting_max ?? 99
+      const postMealMax = limits?.post_meal_max ?? 140
+
       const status =
-        r.reading_value < 70 ? "Baixo" : r.reading_value <= 99 ? "Normal" : r.reading_value <= 140 ? "Atenção" : "Alto"
+        r.reading_value < hypo ? "Baixo" : r.reading_value <= fastingMax ? "Normal" : r.reading_value <= postMealMax ? "Atenção" : "Alto"
       return [
         format(new Date(r.reading_date), "dd/MM/yyyy"),
         r.reading_time.slice(0, 5),
@@ -420,9 +486,13 @@ export function ExportarDadosModal({ open, onOpenChange, userId, sortOrder = "de
     const maxGlucose = readings.length > 0 ? Math.max(...readings.map((r) => r.reading_value)) : 0
     const minGlucose = readings.length > 0 ? Math.min(...readings.map((r) => r.reading_value)) : 0
 
-    const normalCount = readings.filter((r) => r.reading_value >= 70 && r.reading_value <= 99).length
-    const highCount = readings.filter((r) => r.reading_value > 140).length
-    const lowCount = readings.filter((r) => r.reading_value < 70).length
+    const hypo = limits?.hypo_limit ?? 70
+    const fastingMax = limits?.fasting_max ?? 99
+    const postMealMax = limits?.post_meal_max ?? 140
+
+    const normalCount = readings.filter((r) => r.reading_value >= hypo && r.reading_value <= fastingMax).length
+    const highCount = readings.filter((r) => r.reading_value > postMealMax).length
+    const lowCount = readings.filter((r) => r.reading_value < hypo).length
 
     const chartImageData = await generateChartImage(readings)
 
@@ -657,16 +727,20 @@ export function ExportarDadosModal({ open, onOpenChange, userId, sortOrder = "de
               ${readings
         .map((r) => {
           const value = r.reading_value
+          const hypo = limits?.hypo_limit ?? 70
+          const fastingMax = limits?.fasting_max ?? 99
+          const postMealMax = limits?.post_meal_max ?? 140
+
           let statusClass = "status-normal"
           let statusText = "Normal"
 
-          if (value < 70) {
+          if (value < hypo) {
             statusClass = "status-baixo"
             statusText = "Baixo"
-          } else if (value > 140) {
+          } else if (value > postMealMax) {
             statusClass = "status-alto"
             statusText = "Alto"
-          } else if (value > 99) {
+          } else if (value > fastingMax) {
             statusClass = "status-atencao"
             statusText = "Atenção"
           }
@@ -688,14 +762,14 @@ export function ExportarDadosModal({ open, onOpenChange, userId, sortOrder = "de
           
           <div class="footer">
             <p><strong>Distribuição dos Resultados:</strong></p>
-            <p>✅ Normais (70-99 mg/dL): ${normalCount} leitura(s) - ${readings.length > 0 ? ((normalCount / readings.length) * 100).toFixed(1) : 0}%</p>
-            <p>⚠️ Altos (&gt;140 mg/dL): ${highCount} leitura(s) - ${readings.length > 0 ? ((highCount / readings.length) * 100).toFixed(1) : 0}%</p>
-            <p>⬇️ Baixos (&lt;70 mg/dL): ${lowCount} leitura(s) - ${readings.length > 0 ? ((lowCount / readings.length) * 100).toFixed(1) : 0}%</p>
+            <p>✅ Normais (${hypo}-${fastingMax} mg/dL): ${normalCount} leitura(s) - ${readings.length > 0 ? ((normalCount / readings.length) * 100).toFixed(1) : 0}%</p>
+            <p>⚠️ Altos (&gt;${postMealMax} mg/dL): ${highCount} leitura(s) - ${readings.length > 0 ? ((highCount / readings.length) * 100).toFixed(1) : 0}%</p>
+            <p>⬇️ Baixos (&lt;${hypo} mg/dL): ${lowCount} leitura(s) - ${readings.length > 0 ? ((lowCount / readings.length) * 100).toFixed(1) : 0}%</p>
             <p style="margin-top: 20px;">
               <strong>Relatório gerado em:</strong> ${format(new Date(), "dd/MM/yyyy 'às' HH:mm")}
             </p>
             <p style="margin-top: 10px; font-style: italic;">
-              Valores de referência em jejum: 70-99 mg/dL (Normal) | 100-125 mg/dL (Pré-diabetes) | ≥126 mg/dL (Diabetes)
+              Valores de referência em jejum: ${hypo}-${fastingMax} mg/dL (Normal) | ${fastingMax + 1}-125 mg/dL (Pré-diabetes) | ≥126 mg/dL (Diabetes)
             </p>
           </div>
         </body>

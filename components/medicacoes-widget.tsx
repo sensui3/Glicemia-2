@@ -18,7 +18,7 @@ export function MedicacoesWidget({ userId }: Props) {
   const [isManaging, setIsManaging] = useState(false)
 
   useEffect(() => {
-    loadMedications()
+    void loadMedications()
   }, [userId])
 
   const loadMedications = async () => {

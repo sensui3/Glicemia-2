@@ -36,7 +36,7 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    loadStats()
+    void loadStats()
   }, [userId, refreshKey])
 
   const loadStats = async () => {

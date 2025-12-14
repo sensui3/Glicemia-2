@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, memo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts"
 import { format, parseISO } from "date-fns"
@@ -11,7 +11,7 @@ type Props = {
   readings: GlucoseReading[]
 }
 
-export function GlucoseChart({ readings }: Props) {
+const GlucoseChartBase = ({ readings, limits }: Props & { limits?: import("@/lib/types").GlucoseLimits }) => {
   const chartData = useMemo(() => {
     return [...readings]
       .sort((a, b) => {
@@ -54,6 +54,13 @@ export function GlucoseChart({ readings }: Props) {
     return labels[condition] || condition
   }
 
+  // Define defaults if limits not provided
+  const fastingMin = limits?.fasting_min ?? 70
+  const fastingMax = limits?.fasting_max ?? 99
+  const postMealMax = limits?.post_meal_max ?? 140
+  // const hypoLimit = limits?.hypo_limit ?? 70
+  // const hyperLimit = limits?.hyper_limit ?? 180
+
   if (chartData.length === 0) {
     return (
       <Card className="mt-6">
@@ -94,24 +101,24 @@ export function GlucoseChart({ readings }: Props) {
             />
             <Tooltip content={<CustomTooltip />} />
 
-            {/* Linhas de referência para valores normais */}
+            {/* Linhas de referência dinâmicas */}
             <ReferenceLine
-              y={70}
+              y={fastingMin}
               stroke="#22c55e"
               strokeDasharray="3 3"
-              label={{ value: "Mínimo Normal (70)", position: "insideTopLeft", fontSize: 10 }}
+              label={{ value: `Mínimo (${fastingMin})`, position: "insideTopLeft", fontSize: 10 }}
             />
             <ReferenceLine
-              y={99}
+              y={fastingMax}
               stroke="#22c55e"
               strokeDasharray="3 3"
-              label={{ value: "Máximo Normal (99)", position: "insideTopLeft", fontSize: 10 }}
+              label={{ value: `Máximo Normal (${fastingMax})`, position: "insideTopLeft", fontSize: 10 }}
             />
             <ReferenceLine
-              y={140}
+              y={postMealMax}
               stroke="#f59e0b"
               strokeDasharray="3 3"
-              label={{ value: "Atenção (140)", position: "insideTopLeft", fontSize: 10 }}
+              label={{ value: `Meta Pós-Refeição (${postMealMax})`, position: "insideTopLeft", fontSize: 10 }}
             />
 
             <Area
@@ -125,22 +132,21 @@ export function GlucoseChart({ readings }: Props) {
           </AreaChart>
         </ResponsiveContainer>
 
-        {/* Legenda */}
+        {/* Legenda Dinâmica */}
         <div className="mt-4 flex flex-wrap gap-4 justify-center text-xs">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-            <span className="text-gray-600">Normal (70-99 mg/dL)</span>
+            <span className="text-gray-600">Normal Faixa Jejum ({fastingMin}-{fastingMax} mg/dL)</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-            <span className="text-gray-600">Atenção (100-140 mg/dL)</span>
+            <span className="text-gray-600">Meta Pós-Refeição (até {postMealMax} mg/dL)</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-            <span className="text-gray-600">Alto (&gt;140 mg/dL)</span>
-          </div>
+          {/* Can add more legends if needed, keeping it simple */}
         </div>
       </CardContent>
     </Card>
   )
 }
+
+export const GlucoseChart = memo(GlucoseChartBase)

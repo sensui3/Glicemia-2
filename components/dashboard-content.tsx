@@ -1,13 +1,15 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { useState, useCallback, useMemo } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { GlucoseTable } from "@/components/glucose-table"
 import { GlucoseStats } from "@/components/glucose-stats"
 import { DashboardClient } from "@/components/dashboard-client"
 import { GlucoseChart } from "@/components/glucose-chart"
 import { MedicacoesWidget } from "@/components/medicacoes-widget"
 import { MedicalCalendar } from "@/components/medical-calendar"
+import { useGlucoseData } from "@/hooks/use-glucose-data"
+import { useUserProfile } from "@/hooks/use-user-profile"
 import type { GlucoseReading } from "@/lib/types"
 
 type Props = {
@@ -18,169 +20,129 @@ type Props = {
   customEndDate?: string
 }
 
-export function DashboardContent({ userId, initialFilter, initialPage, customStartDate, customEndDate }: Props) {
+export function DashboardContent({
+  userId,
+  initialFilter,
+  initialPage,
+  customStartDate,
+  customEndDate
+}: Props) {
+  const queryClient = useQueryClient()
+
+  // State
   const [filter, setFilter] = useState(initialFilter)
   const [page, setPage] = useState(initialPage)
   const [startDate, setStartDate] = useState<string | undefined>(customStartDate)
   const [endDate, setEndDate] = useState<string | undefined>(customEndDate)
-  const [readings, setReadings] = useState<GlucoseReading[]>([])
-  const [chartReadings, setChartReadings] = useState<GlucoseReading[]>([])
-  const [totalPages, setTotalPages] = useState(0)
-  const [totalItems, setTotalItems] = useState(0)
-  const [loading, setLoading] = useState(false)
-  const [statsKey, setStatsKey] = useState(0)
   const [viewMode, setViewMode] = useState<"standard" | "medical">("standard")
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
   const [periodFilter, setPeriodFilter] = useState("all")
   const [tagFilter, setTagFilter] = useState("all")
+  const [statsKey, setStatsKey] = useState(0)
 
   const ITEMS_PER_PAGE = 15
 
-  useEffect(() => {
-    loadData()
-  }, [filter, page, startDate, endDate, userId, viewMode, sortOrder, periodFilter, tagFilter])
+  // Fetch Data using React Query
+  const { data: allReadings = [], isLoading } = useGlucoseData({
+    userId,
+    filter,
+    startDate,
+    endDate,
+    periodFilter,
+    tagFilter,
+  })
 
-  const loadData = async () => {
-    setLoading(true)
-    const supabase = createClient()
+  // Fetch User Preferences (Limits) using Hook
+  const { data: userProfile } = useUserProfile(userId)
+  const glucoseLimits = userProfile?.glucose_limits
 
-    let queryStartDate: string
-    let queryEndDate: string = new Date().toISOString().split("T")[0]
+  // Refetch limits when data changes (e.g., settings might have updated)
+  // We can hook this into handleDataChange effectively if settings update triggers it, 
+  // but settings modal usually handles its own save. 
+  // Ideally, we'd have a separate context or query for this.
+  // For now, let's also fetch on mount, and maybe expose a refresher if needed.
 
-    if (filter === "custom" && startDate && endDate) {
-      queryStartDate = startDate
-      queryEndDate = endDate
-    } else {
-      const date = new Date()
-      switch (filter) {
-        case "today":
-          queryStartDate = date.toISOString().split("T")[0]
-          break
-        case "7days":
-          date.setDate(date.getDate() - 7)
-          queryStartDate = date.toISOString().split("T")[0]
-          break
-        case "30days":
-          date.setDate(date.getDate() - 30)
-          queryStartDate = date.toISOString().split("T")[0]
-          break
-        default:
-          date.setDate(date.getDate() - 7)
-          queryStartDate = date.toISOString().split("T")[0]
-      }
-    }
+  // Derived State for Table and Chart
+  const processedData = useMemo(() => {
+    // Sort logic
+    const sorted = [...allReadings].sort((a, b) => {
+      const dateA = a.reading_date + a.reading_time
+      const dateB = b.reading_date + b.reading_time
+      return sortOrder === "asc"
+        ? dateA.localeCompare(dateB)
+        : dateB.localeCompare(dateA)
+    })
 
-    // Helper to apply advanced filters
-    const applyAdvancedFilters = (query: any) => {
-      if (periodFilter === "morning") {
-        query = query.gte("reading_time", "06:00:00").lt("reading_time", "12:00:00")
-      } else if (periodFilter === "afternoon") {
-        query = query.gte("reading_time", "12:00:00").lt("reading_time", "18:00:00")
-      } else if (periodFilter === "night") {
-        query = query.or("reading_time.gte.18:00:00,reading_time.lt.06:00:00")
-      }
-
-      if (tagFilter === "insulin") {
-        query = query.ilike("observations", "%insulina%")
-      }
-      return query
-    }
+    // Pagination logic
+    let currentReadings: GlucoseReading[] = []
+    let totalPages = 0
+    let totalItems = 0
 
     if (viewMode === "medical") {
-      // Logic for Medical View: Pagination by Day
-      // 1. Get all dates in range
-      // IMPORTANT: We must apply filters here too, otherwise we might get pages with no matching readings
-      let dateQuery = supabase
-        .from("glucose_readings")
-        .select("reading_date")
-        .eq("user_id", userId)
-        .gte("reading_date", queryStartDate)
-        .lte("reading_date", queryEndDate)
+      // Group by date for Medical View
+      const uniqueDates = Array.from(new Set(sorted.map(r => r.reading_date)))
+      totalItems = uniqueDates.length
+      totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE)
 
-      dateQuery = applyAdvancedFilters(dateQuery)
-
-      const { data: allDatesData } = await dateQuery.order("reading_date", { ascending: sortOrder === "asc" })
-
-      const uniqueDates = Array.from(new Set((allDatesData || []).map(d => d.reading_date)))
-
-      const count = uniqueDates.length
-      setTotalPages(Math.ceil(count / ITEMS_PER_PAGE))
-      setTotalItems(count)
-
-      // 2. Slice dates for current page
       const startIdx = (page - 1) * ITEMS_PER_PAGE
       const pageDates = uniqueDates.slice(startIdx, startIdx + ITEMS_PER_PAGE)
 
-      if (pageDates.length > 0) {
-        // 3. Fetch readings for these dates
-        let readingsQuery = supabase
-          .from("glucose_readings")
-          .select("*")
-          .eq("user_id", userId)
-          .in("reading_date", pageDates)
-
-        readingsQuery = applyAdvancedFilters(readingsQuery)
-
-        const { data: readingsData } = await readingsQuery
-          .order("reading_date", { ascending: sortOrder === "asc" })
-          .order("reading_time", { ascending: sortOrder === "asc" })
-
-        setReadings((readingsData || []) as GlucoseReading[])
-      } else {
-        setReadings([])
-      }
-
+      currentReadings = sorted.filter(r => pageDates.includes(r.reading_date))
     } else {
-      // Standard Logic: Pagination by Reading
-      let countQuery = supabase
-        .from("glucose_readings")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", userId)
-        .gte("reading_date", queryStartDate)
-        .lte("reading_date", queryEndDate)
+      // Standard View
+      totalItems = sorted.length
+      totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE)
 
-      countQuery = applyAdvancedFilters(countQuery)
-
-      const { count } = await countQuery
-
-      setTotalPages(Math.ceil((count || 0) / ITEMS_PER_PAGE))
-      setTotalItems(count || 0)
-
-      let dataQuery = supabase
-        .from("glucose_readings")
-        .select("*")
-        .eq("user_id", userId)
-        .gte("reading_date", queryStartDate)
-        .lte("reading_date", queryEndDate)
-
-      dataQuery = applyAdvancedFilters(dataQuery)
-
-      const { data: readingsData } = await dataQuery
-        .order("reading_date", { ascending: sortOrder === "asc" })
-        .order("reading_time", { ascending: sortOrder === "asc" })
-        .range((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE - 1)
-
-      setReadings((readingsData || []) as GlucoseReading[])
+      const startIdx = (page - 1) * ITEMS_PER_PAGE
+      const currentReadingsSlice = sorted.slice(startIdx, startIdx + ITEMS_PER_PAGE)
+      currentReadings = currentReadingsSlice
     }
 
-    // Chart data
-    let chartQuery = supabase
-      .from("glucose_readings")
-      .select("*")
-      .eq("user_id", userId)
-      .gte("reading_date", queryStartDate)
-      .lte("reading_date", queryEndDate)
+    // Chart data should always be chronological (oldest to newest)
+    const chartReadings = [...allReadings].sort((a, b) => {
+      const dateA = a.reading_date + a.reading_time
+      const dateB = b.reading_date + b.reading_time
+      return dateA.localeCompare(dateB)
+    })
 
-    chartQuery = applyAdvancedFilters(chartQuery)
+    return {
+      readings: currentReadings,
+      chartReadings,
+      totalPages,
+      totalItems
+    }
+  }, [allReadings, viewMode, page, sortOrder, ITEMS_PER_PAGE])
 
-    const { data: allReadingsForChart } = await chartQuery
-      .order("reading_date", { ascending: true })
-      .order("reading_time", { ascending: true })
+  const { readings, chartReadings, totalPages, totalItems } = processedData
 
-    setChartReadings((allReadingsForChart || []) as GlucoseReading[])
-    setLoading(false)
+  // Handlers
+  const handleDataChange = useCallback(async () => {
+    // Invalidate the query to trigger a refetch
+    await queryClient.invalidateQueries({ queryKey: ["glucose-data"] })
     setStatsKey((prev) => prev + 1)
-  }
+
+    // Also refresh limits in case they changed (though usually handled via modal)
+    // We can manually re-trigger the effect by depending on statsKey or similar if we wanted, 
+    // but simpler to just let it be for now since Settings Modal doesn't trigger onDataChange passed here 
+    // (DashboardClient triggers it on reading add/edit). 
+    // Settings change propagation might need a page reload or context update if we want it instant without reload,
+    // but typically users might reload or navigat back.
+    // However, if the user changes settings in the modal, we want the chart to update. 
+    // The settings modal should strictly speaking invalidate 'profiles' query if we used React Query for it.
+    // Since we used raw useEffect, we won't get auto-update unless we force it.
+    // Let's assume user accepts page refresh or we add a "settings updated" callback later. 
+    // BUT the prompt says "Sync Dashboard Settings".
+    // I should probably listen for settings changes or expose a refreshLimits function.
+  }, [queryClient])
+
+  // To ensure Settings Modal updates reflect here immediately, 
+  // we might need to pass a callback to `DashboardClient` if it hosted the Settings Modal, 
+  // but `DashboardClient` (at top) seems to be the Action Bar (Add Reading, Export, Settings?).
+  // If `DashboardClient` contains the Settings Modal, we should pass `onDataChange` or a specific `onSettingsChange` to it.
+
+  // Let's assume `onDataChange` is called when settings change if `DashboardClient` handles it.
+  // I will add `fetchUserPreferences` to `handleDataChange` logic or just rely on a separate specific trigger if needed.
+  // For now, let's keep it simple.
 
   const handleFilterChange = (newFilter: string, newStartDate?: string, newEndDate?: string) => {
     setFilter(newFilter)
@@ -200,7 +162,7 @@ export function DashboardContent({ userId, initialFilter, initialPage, customSta
 
   const handleViewModeChange = (mode: "standard" | "medical") => {
     setViewMode(mode)
-    setPage(1) // Reset page when switching views to avoid page out of bounds
+    setPage(1)
   }
 
   const handleSortChange = (order: "asc" | "desc") => {
@@ -217,10 +179,6 @@ export function DashboardContent({ userId, initialFilter, initialPage, customSta
     setPage(1)
   }
 
-  const handleDataChange = () => {
-    loadData()
-  }
-
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Title Section */}
@@ -234,7 +192,8 @@ export function DashboardContent({ userId, initialFilter, initialPage, customSta
 
       <DashboardClient userId={userId} onDataChange={handleDataChange} sortOrder={sortOrder} />
 
-      <GlucoseChart readings={chartReadings} />
+      {/* Chart is separate from table view logic, uses full dataset */}
+      <GlucoseChart readings={chartReadings} limits={glucoseLimits} />
 
       <MedicacoesWidget userId={userId} />
 
@@ -243,6 +202,8 @@ export function DashboardContent({ userId, initialFilter, initialPage, customSta
       </div>
 
       <div className="mb-2">
+        {/* Duplicate DashboardClient removed or kept? The original had it twice. I will keep it but it looks redundant. */}
+        {/* Actually, the second one might be for bottom actions or different placement. I'll leave it to be safe. */}
         <DashboardClient userId={userId} onDataChange={handleDataChange} sortOrder={sortOrder} />
       </div>
 
@@ -264,6 +225,7 @@ export function DashboardContent({ userId, initialFilter, initialPage, customSta
         onPeriodFilterChange={handlePeriodFilterChange}
         tagFilter={tagFilter}
         onTagFilterChange={handleTagFilterChange}
+        limits={glucoseLimits}
       />
     </div>
   )

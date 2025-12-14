@@ -29,6 +29,7 @@ Este projeto utiliza uma stack moderna e performática:
 *   **Estilização**: Tailwind CSS + Shadcn/ui (Radix UI) para componentes acessíveis e bonitos.
 *   **Ícones**: Lucide React.
 *   **Gráficos**: Recharts.
+*   **Gerenciamento de Estado**: TanStack Query (React Query) para cache e otimização de requisições.
 *   **Backend / Auth**: [Supabase](https://supabase.com/).
 *   **Persistência**: Supabase Database (PostgreSQL) e Storage (para arquivos JSON).
 *   **Testes e Documentação**: Storybook para desenvolvimento de componentes.

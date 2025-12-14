@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,6 +27,7 @@ const DEFAULT_LIMITS: GlucoseLimits = {
 }
 
 export function ConfiguracoesModal({ open, onOpenChange }: Props) {
+  const queryClient = useQueryClient()
   const [email, setEmail] = useState("")
   const [fullName, setFullName] = useState("")
   const [glucoseUnit, setGlucoseUnit] = useState<"mg/dL" | "mmol/L">("mg/dL")
@@ -105,6 +107,7 @@ export function ConfiguracoesModal({ open, onOpenChange }: Props) {
         title: "Configurações salvas",
         description: "Suas preferências foram atualizadas com sucesso."
       })
+      queryClient.invalidateQueries({ queryKey: ["user-profile"] })
       onOpenChange(false)
     }
     setIsSaving(false)

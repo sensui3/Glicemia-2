@@ -1,6 +1,6 @@
 "use client"
 
-import { type GlucoseReading, type GlucoseStatus, getGlucoseStatus } from "@/lib/types"
+import { type GlucoseReading, type GlucoseStatus, getGlucoseStatus, type GlucoseLimits } from "@/lib/types"
 import { Utensils, Moon, Coffee, MoreHorizontal, Pencil, LayoutList, Grid3X3, ArrowDownAZ, ArrowUpAZ } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { TablePagination } from "@/components/table-pagination"
@@ -27,6 +27,7 @@ type Props = {
   onPeriodFilterChange: (period: string) => void
   tagFilter: string
   onTagFilterChange: (tag: string) => void
+  limits?: GlucoseLimits
 }
 
 function getConditionIcon(condition: string) {
@@ -78,7 +79,6 @@ function getConditionLabel(condition: string, time?: string) {
       return "Outro"
   }
 }
-
 function getStatusBadge(status: GlucoseStatus) {
   const styles = {
     normal: "bg-green-100 text-green-800",
@@ -102,6 +102,7 @@ function getStatusBadge(status: GlucoseStatus) {
 }
 
 export function GlucoseTable({
+  // ... (existing props)
   readings,
   totalPages,
   totalItems,
@@ -118,7 +119,9 @@ export function GlucoseTable({
   onPeriodFilterChange,
   tagFilter,
   onTagFilterChange,
+  limits,
 }: Props) {
+  // ... (existing state)
   const [editingReading, setEditingReading] = useState<GlucoseReading | null>(null)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
@@ -127,11 +130,17 @@ export function GlucoseTable({
     setIsEditModalOpen(true)
   }
 
+  // ... (render)
+
+  // Inside map:
+  // const status = getGlucoseStatus(reading.reading_value, reading.condition, limits)
+
   return (
     <>
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        {/* Filters */}
+        {/* ... (filters) */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4 border-b border-gray-100">
+          {/* ... (TableFilters and buttons) */}
           <TableFilters
             currentFilter={currentFilter}
             onFilterChange={onFilterChange}
@@ -140,8 +149,8 @@ export function GlucoseTable({
             tagFilter={tagFilter}
             onTagFilterChange={onTagFilterChange}
           />
-
           <div className="flex items-center gap-2">
+            {/* ... (Sort buttons) */}
             <div className="flex items-center bg-gray-100 p-1 rounded-lg">
               <button
                 onClick={() => onSortChange("desc")}
@@ -191,7 +200,6 @@ export function GlucoseTable({
         </div>
 
         {/* Table */}
-        {/* Table */}
         {viewMode === "standard" ? (
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -219,7 +227,7 @@ export function GlucoseTable({
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {readings.map((reading) => {
-                  const status = getGlucoseStatus(reading.reading_value, reading.condition)
+                  const status = getGlucoseStatus(reading.reading_value, reading.condition, limits)
                   const [year, month, day] = reading.reading_date.split("-")
                   const formattedDate = `${day}/${month}/${year}`
                   const formattedTime = reading.reading_time.slice(0, 5)
@@ -260,7 +268,7 @@ export function GlucoseTable({
             </table>
           </div>
         ) : (
-          <GlucoseTableMedical readings={readings} sortOrder={sortOrder} />
+          <GlucoseTableMedical readings={readings} sortOrder={sortOrder} limits={limits} />
         )}
 
         {/* Pagination */}

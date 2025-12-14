@@ -1,12 +1,13 @@
 "use client"
 
-import { type GlucoseReading } from "@/lib/types"
+import { type GlucoseReading, type GlucoseLimits } from "@/lib/types"
 import { format, parseISO } from "date-fns"
 import { ptBR } from "date-fns/locale"
 
 type Props = {
     readings: GlucoseReading[]
     sortOrder: "asc" | "desc"
+    limits?: GlucoseLimits
 }
 
 /* ... */
@@ -45,14 +46,44 @@ function getSlotForReading(reading: GlucoseReading): keyof DailyReadings | null 
     return null
 }
 
-function getStatusColor(value: number) {
-    if (value < 70) return "bg-yellow-100 text-yellow-800 border-yellow-200"
-    if (value <= 99) return "bg-green-100 text-green-800 border-green-200"
-    if (value <= 140) return "bg-orange-100 text-orange-800 border-orange-200"
-    return "bg-red-100 text-red-800 border-red-200"
-}
+export function GlucoseTableMedical({ readings, sortOrder, limits }: Props) {
+    const getStatusColor = (value: number) => {
+        const fastingMin = limits?.fasting_min ?? 70
+        const fastingMax = limits?.fasting_max ?? 99
+        const postMealMax = limits?.post_meal_max ?? 140
+        // We can treat attention as between normal max and hyper limit (or just a fixed range above normal)
+        // For simplicity/consistency with chart:
 
-export function GlucoseTableMedical({ readings, sortOrder }: Props) {
+        if (value < fastingMin) return "bg-yellow-100 text-yellow-800 border-yellow-200"
+        if (value <= fastingMax) return "bg-green-100 text-green-800 border-green-200"
+        if (value <= postMealMax) {
+            // If passing fastingMax but under postMealMax, might be green or orange depending on context,
+            // but here we have generic cells.
+            // Let's use a simpler heuristic for the medical table cells which often doesn't know context per cell easily without passing it...
+            // actually we do know context by column! But `getStatusColor` is generic.
+            // Ideally we should check column context.
+            return "bg-green-100 text-green-800 border-green-200"
+        }
+
+        // Let's stick to the user's logic roughly:
+        // if <= limits.fasting_max (99) -> Normal (Green)
+        // if <= limits.post_meal_max (140) -> Normal/Pre-diabetes (Green/Orange? Usually Green for post-prandial)
+        // Reference: standard "green" is up to 140 usually for post-prandial.
+
+        // Refined Logic using limits:
+        // Low
+        if (value < (limits?.hypo_limit ?? 70)) return "bg-yellow-100 text-yellow-800 border-yellow-200"
+
+        // Normal range (broadest definition for table simplicity, or strict?)
+        // Let's use the provided `fasting_max` as the strict "green" threshold for fasting, 
+        // but for general view maybe use `post_meal_max` as the "okay" threshold?
+        // The original code used 99 as green cutoff.
+
+        if (value <= (limits?.fasting_max ?? 99)) return "bg-green-100 text-green-800 border-green-200"
+        if (value <= (limits?.post_meal_max ?? 140)) return "bg-orange-100 text-orange-800 border-orange-200" // Attention/Elevated
+
+        return "bg-red-100 text-red-800 border-red-200" // High
+    }
     /* ... */
     // Group readings by date
     const groupedReadings = readings.reduce((acc, reading) => {

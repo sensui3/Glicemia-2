@@ -30,27 +30,34 @@ export type UserProfile = {
 
 export type GlucoseStatus = "normal" | "alto" | "baixo" | "atencao"
 
-export function getGlucoseStatus(value: number, condition: string): GlucoseStatus {
-  // Valores de referência de jejum: 70-99 mg/dL (normal)
+export function getGlucoseStatus(value: number, condition: string, limits?: GlucoseLimits): GlucoseStatus {
+  // Use limits if provided, otherwise default to standard values
+  const fastingMin = limits?.fasting_min ?? 70
+  const fastingMax = limits?.fasting_max ?? 99
+  const postMealMax = limits?.post_meal_max ?? 140
+  const hypoLimit = limits?.hypo_limit ?? 70
+  const hyperLimit = limits?.hyper_limit ?? 180
+
+  // Valores de referência de jejum
   if (condition === "jejum") {
-    if (value < 70) return "baixo"
-    if (value <= 99) return "normal"
-    if (value <= 125) return "atencao"
+    if (value < fastingMin) return "baixo"
+    if (value <= fastingMax) return "normal"
+    if (value <= 125) return "atencao" // This 125 might also need to be configurable or derived? Keeping hardcoded for now as it's pre-diabetes range usually constant
     return "alto"
   }
 
-  // Pós-refeição: até 140 mg/dL (normal)
+  // Pós-refeição
   if (condition === "apos_refeicao") {
-    if (value < 70) return "baixo"
-    if (value <= 140) return "normal"
-    if (value <= 180) return "atencao"
+    if (value < hypoLimit) return "baixo"
+    if (value <= postMealMax) return "normal"
+    if (value <= hyperLimit) return "atencao"
     return "alto"
   }
 
-  // Padrão geral
-  if (value < 70) return "baixo"
-  if (value <= 140) return "normal"
-  if (value <= 180) return "atencao"
+  // Padrão geral / outros momentos
+  if (value < hypoLimit) return "baixo"
+  if (value <= postMealMax) return "normal" // Using postMealMax as general upper normal limit
+  if (value <= hyperLimit) return "atencao" // Using hyperLimit as start of 'alto'
   return "alto"
 }
 

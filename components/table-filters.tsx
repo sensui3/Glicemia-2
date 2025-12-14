@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { FiltroPersonalizadoModal } from "@/components/filtro-personalizado-modal"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Filter, Clock, Syringe } from "lucide-react"
@@ -24,6 +24,11 @@ export function TableFilters({
   onTagFilterChange
 }: Props) {
   const [isCustomFilterOpen, setIsCustomFilterOpen] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   const setFilter = (filter: string) => {
     if (filter === "custom") {
@@ -45,6 +50,25 @@ export function TableFilters({
     { value: "30days", label: "30 Dias" },
     { value: "custom", label: "Personalizado" },
   ]
+
+  if (!isMounted) {
+    return (
+      <div className="p-4 border-b border-gray-200">
+        <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
+          {/* Skeleton/Placeholder to prevent layout shift */}
+          <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
+            {filters.map((filter) => (
+              <div key={filter.value} className="h-9 w-20 bg-gray-100 rounded-md animate-pulse" />
+            ))}
+          </div>
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <div className="h-9 w-[140px] bg-gray-100 rounded-md animate-pulse" />
+            <div className="h-9 w-[140px] bg-gray-100 rounded-md animate-pulse" />
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <>
