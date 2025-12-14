@@ -68,3 +68,18 @@ export function getMedicationTypeLabel(type: MedicationType): string {
   }
   return labels[type]
 }
+
+export type Doctor = {
+  id: string
+  user_id: string
+  name: string
+  specialty: string
+  address: string | null
+  contact: string | null
+  crm: string | null
+  last_appointment: string | null
+  next_appointment: string | null
+  created_at: string
+  updated_at: string
+}
+
