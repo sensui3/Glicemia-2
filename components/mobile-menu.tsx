@@ -18,15 +18,19 @@ export function MobileMenu() {
   const pathname = usePathname()
   const router = useRouter()
   const { toast } = useToast()
-  const [isMounted, setIsMounted] = useState(false)
 
   // Prevent hydration mismatch by ensuring component only renders on client
+  const [isMounted, setIsMounted] = useState(false)
   useEffect(() => {
     setIsMounted(true)
   }, [])
 
   if (!isMounted) {
-    return null
+    return (
+      <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Abrir menu">
+        <Menu className="w-5 h-5" />
+      </Button>
+    )
   }
 
   const navItems = [

@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
-import { Syringe, PillIcon, Activity } from "lucide-react"
+import { Syringe, PillIcon, Activity, CalendarClock } from "lucide-react"
 
 type Props = {
   open: boolean
@@ -25,6 +25,8 @@ export function NovaMedicacaoModal({ open, onOpenChange, userId, onSuccess }: Pr
 
   const [medicationName, setMedicationName] = useState("")
   const [medicationType, setMedicationType] = useState<string>("insulina_rapida")
+
+  // Dados da administração atual
   const [dosage, setDosage] = useState("")
   const [dosageUnit, setDosageUnit] = useState<string>("UI")
   const [date, setDate] = useState(() => {
@@ -36,7 +38,29 @@ export function NovaMedicacaoModal({ open, onOpenChange, userId, onSuccess }: Pr
     return now.toTimeString().slice(0, 5)
   })
   const [notes, setNotes] = useState("")
+
+  // Configuração de uso contínuo
   const [isContinuous, setIsContinuous] = useState(false)
+  const [continuousDosage, setContinuousDosage] = useState("")
+  const [continuousDosageUnit, setContinuousDosageUnit] = useState<string>("UI")
+
+  // Reset dosage units when type changes
+  useEffect(() => {
+    if (medicationType.includes("insulina")) {
+      setDosageUnit("UI")
+      setContinuousDosageUnit("UI")
+    } else if (dosageUnit === "UI") {
+      setDosageUnit("mg")
+      setContinuousDosageUnit("mg")
+    }
+  }, [medicationType])
+
+  // Sync continuous dosage with current dosage initially if empty
+  useEffect(() => {
+    if (isContinuous && !continuousDosage && dosage) {
+      setContinuousDosage(dosage)
+    }
+  }, [isContinuous, dosage])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -60,9 +84,9 @@ export function NovaMedicacaoModal({ open, onOpenChange, userId, onSuccess }: Pr
         administration_time: time,
         notes: notes || null,
         is_continuous: isContinuous,
-        continuous_dosage: isContinuous ? Number.parseFloat(dosage) : null,
-        continuous_dosage_unit: isContinuous ? dosageUnit : null,
-        is_active: isContinuous,
+        continuous_dosage: isContinuous && continuousDosage ? Number.parseFloat(continuousDosage) : null,
+        continuous_dosage_unit: isContinuous ? continuousDosageUnit : null,
+        is_active: isContinuous, // Novas medicações contínuas nascem ativas
       })
 
       if (error) throw error
@@ -70,8 +94,8 @@ export function NovaMedicacaoModal({ open, onOpenChange, userId, onSuccess }: Pr
       toast({
         title: "Medicação registrada!",
         description: isContinuous
-          ? "A medicação de uso contínuo foi configurada com sucesso."
-          : "A medicação foi adicionada com sucesso.",
+          ? "Medicação registrada e configurada como uso contínuo."
+          : "A medicação foi adicionada ao histórico.",
       })
 
       onSuccess()
@@ -99,6 +123,8 @@ export function NovaMedicacaoModal({ open, onOpenChange, userId, onSuccess }: Pr
     setTime(new Date().toTimeString().slice(0, 5))
     setNotes("")
     setIsContinuous(false)
+    setContinuousDosage("")
+    setContinuousDosageUnit("UI")
   }
 
   const medicationTypes = [
@@ -110,12 +136,18 @@ export function NovaMedicacaoModal({ open, onOpenChange, userId, onSuccess }: Pr
     { value: "outro_medicamento", label: "Outro Medicamento", icon: PillIcon },
   ]
 
-  const dosageUnits = [
-    { value: "UI", label: "UI (Unidades Internacionais)" },
-    { value: "mg", label: "mg (Miligramas)" },
-    { value: "ml", label: "ml (Mililitros)" },
-    { value: "comprimido", label: "Comprimido" },
-  ]
+  const getAvailableUnits = (type: string) => {
+    if (type.includes("insulina")) {
+      return [{ value: "UI", label: "UI (Unid. Internacionais)" }]
+    }
+    return [
+      { value: "mg", label: "mg (Miligramas)" },
+      { value: "ml", label: "ml (Mililitros)" },
+      { value: "comprimido", label: "Comprimido" },
+    ]
+  }
+
+  const currentAvailableUnits = getAvailableUnits(medicationType)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -127,119 +159,167 @@ export function NovaMedicacaoModal({ open, onOpenChange, userId, onSuccess }: Pr
             </div>
             Nova Medicação
           </DialogTitle>
-          <DialogDescription>Registre insulinas e outros medicamentos.</DialogDescription>
+          <DialogDescription>Registre uma aplicação ou configure um novo medicamento.</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6 py-4">
-          <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <input
-                type="checkbox"
-                id="is_continuous"
-                checked={isContinuous}
-                onChange={(e) => setIsContinuous(e.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <div className="flex-1">
-                <Label htmlFor="is_continuous" className="font-semibold text-amber-900 dark:text-amber-500 cursor-pointer">
-                  Medicação de Uso Contínuo
-                </Label>
-                <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
-                  Marque esta opção para medicações que você usa diariamente com dosagem fixa (ex: Insulina Glargina
-                  30u). Você poderá ajustar a dosagem quando necessário.
-                </p>
-              </div>
-            </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="date">Data {isContinuous && "(Início do uso contínuo)"}</Label>
-              <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
-            </div>
-            <div>
-              <Label htmlFor="time">Hora {isContinuous && "(Horário habitual)"}</Label>
-              <Input id="time" type="time" value={time} onChange={(e) => setTime(e.target.value)} required />
-            </div>
-          </div>
+          {/* Seção 1: O que foi tomado */}
+          <div className="space-y-4">
+            <Label className="text-base font-semibold flex items-center gap-2">
+              <PillIcon className="w-4 h-4" />
+              Medicamento
+            </Label>
 
-          <div>
-            <Label className="mb-3 block">Tipo de Medicação</Label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
               {medicationTypes.map((type) => {
                 const Icon = type.icon
                 return (
                   <button
                     key={type.value}
                     type="button"
-                    onClick={() => {
-                      setMedicationType(type.value)
-                      if (type.value.includes("insulina")) {
-                        setDosageUnit("UI")
-                      }
-                    }}
-                    className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-all ${medicationType === type.value
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border hover:border-primary/50 bg-card hover:bg-muted/50"
+                    onClick={() => setMedicationType(type.value)}
+                    className={`flex flex-col items-center justify-center gap-2 p-3 rounded-lg border-2 transition-all h-24 ${medicationType === type.value
+                        ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
+                        : "border-border hover:border-blue-200 bg-card hover:bg-muted/50"
                       }`}
                   >
-                    <Icon className="w-5 h-5" />
-                    <span className="text-sm font-medium">{type.label}</span>
+                    <Icon className={`w-6 h-6 ${medicationType === type.value ? "text-blue-500" : "text-muted-foreground"}`} />
+                    <span className="text-xs font-medium text-center">{type.label}</span>
                   </button>
                 )
               })}
             </div>
-          </div>
 
-          <div>
-            <Label htmlFor="medication_name">Nome da Medicação</Label>
-            <Input
-              id="medication_name"
-              placeholder="Ex: Novorapid, Lantus, Metformina..."
-              value={medicationName}
-              onChange={(e) => setMedicationName(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="dosage">Dosagem {isContinuous && "(Padrão)"}</Label>
+              <Label htmlFor="medication_name">Nome Comercial</Label>
               <Input
-                id="dosage"
-                type="number"
-                step="0.1"
-                placeholder="Ex: 10"
-                value={dosage}
-                onChange={(e) => setDosage(e.target.value)}
+                id="medication_name"
+                placeholder="Ex: Lantus, Novorapid, Glifage..."
+                value={medicationName}
+                onChange={(e) => setMedicationName(e.target.value)}
+                className="mt-1.5"
                 required
               />
             </div>
-            <div>
-              <Label htmlFor="dosage_unit">Unidade</Label>
-              <select
-                id="dosage_unit"
-                value={dosageUnit}
-                onChange={(e) => setDosageUnit(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                required
-              >
-                {dosageUnits.map((unit) => (
-                  <option key={unit.value} value={unit.value}>
-                    {unit.label}
-                  </option>
-                ))}
-              </select>
+          </div>
+
+          <div className="h-px bg-border my-4" />
+
+          {/* Seção 2: Detalhes da Aplicação (Ocorrência) */}
+          <div className="space-y-4">
+            <Label className="text-base font-semibold flex items-center gap-2">
+              <CalendarClock className="w-4 h-4" />
+              Registro do Evento
+            </Label>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="date">Data</Label>
+                  <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required className="mt-1.5" />
+                </div>
+                <div>
+                  <Label htmlFor="time">Hora</Label>
+                  <Input id="time" type="time" value={time} onChange={(e) => setTime(e.target.value)} required className="mt-1.5" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-[1fr,110px] gap-2">
+                <div>
+                  <Label htmlFor="dosage">Dosagem Aplicada</Label>
+                  <Input
+                    id="dosage"
+                    type="number"
+                    step="0.1"
+                    placeholder="0"
+                    value={dosage}
+                    onChange={(e) => setDosage(e.target.value)}
+                    required
+                    className="mt-1.5"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="dosage_unit">Unidade</Label>
+                  <select
+                    id="dosage_unit"
+                    value={dosageUnit}
+                    onChange={(e) => setDosageUnit(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring mt-1.5"
+                    required
+                  >
+                    {currentAvailableUnits.map((unit) => (
+                      <option key={unit.value} value={unit.value}>
+                        {unit.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
+          </div>
+
+          {/* Seção 3: Uso Contínuo */}
+          <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/50 rounded-xl p-5 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="flex items-center h-6">
+                <input
+                  type="checkbox"
+                  id="is_continuous"
+                  checked={isContinuous}
+                  onChange={(e) => setIsContinuous(e.target.checked)}
+                  className="h-5 w-5 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                />
+              </div>
+              <div className="flex-1">
+                <Label htmlFor="is_continuous" className="font-bold text-amber-900 dark:text-amber-500 cursor-pointer text-base">
+                  Uso Contínuo / Diário
+                </Label>
+                <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
+                  Marque se este é um medicamento recorrente. Isso irá adicioná-lo à lista de monitoramento no painel.
+                </p>
+              </div>
+            </div>
+
+            {isContinuous && (
+              <div className="pt-2 pl-8 grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div>
+                  <Label htmlFor="continuous_dosage" className="text-amber-900 dark:text-amber-500">Dosagem Padrão (Diária)</Label>
+                  <div className="flex gap-2 mt-1.5">
+                    <Input
+                      id="continuous_dosage"
+                      type="number"
+                      step="0.1"
+                      value={continuousDosage}
+                      onChange={(e) => setContinuousDosage(e.target.value)}
+                      className="bg-white dark:bg-black/20 border-amber-200 dark:border-amber-800 focus-visible:ring-amber-500"
+                      placeholder="Ex: 20"
+                    />
+                    <select
+                      value={continuousDosageUnit}
+                      onChange={(e) => setContinuousDosageUnit(e.target.value)}
+                      className="w-[110px] rounded-md border border-amber-200 dark:border-amber-800 bg-white dark:bg-black/20 px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+                    >
+                      {currentAvailableUnits.map((unit) => (
+                        <option key={unit.value} value={unit.value}>
+                          {unit.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div>
             <Label htmlFor="notes">Observações (Opcional)</Label>
             <Textarea
               id="notes"
-              placeholder="Ex: Tomado antes do café da manhã, local da aplicação..."
+              placeholder="Local de aplicação, sintomas ou outras notas..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
+              className="mt-1.5"
               rows={3}
             />
           </div>
@@ -249,7 +329,7 @@ export function NovaMedicacaoModal({ open, onOpenChange, userId, onSuccess }: Pr
               Cancelar
             </Button>
             <Button type="submit" disabled={loading} className="flex-1 bg-blue-600 hover:bg-blue-700">
-              {loading ? "Salvando..." : isContinuous ? "Configurar Uso Contínuo" : "Salvar Medicação"}
+              {loading ? "Salvando..." : "Salvar Registro"}
             </Button>
           </div>
         </form>

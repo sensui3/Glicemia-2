@@ -11,6 +11,7 @@ import { MedicalCalendar } from "@/components/medical-calendar"
 import { useGlucoseData } from "@/hooks/use-glucose-data"
 import { useUserProfile } from "@/hooks/use-user-profile"
 import type { GlucoseReading } from "@/lib/types"
+import { format, parseISO, subDays, isAfter } from "date-fns"
 
 type Props = {
   userId: string
@@ -42,10 +43,13 @@ export function DashboardContent({
 
   const ITEMS_PER_PAGE = 15
 
+  // Fetch Logic: Always fetch at least 90 days to populate the chart history, unless custom range is selected.
+  const fetchFilter = filter === "custom" ? "custom" : "90days"
+
   // Fetch Data using React Query
-  const { data: allReadings = [], isLoading } = useGlucoseData({
+  const { data: allFetchedReadings = [], isLoading } = useGlucoseData({
     userId,
-    filter,
+    filter: fetchFilter, // Use broader filter for data fetching covers chart needs
     startDate,
     endDate,
     periodFilter,
@@ -56,16 +60,32 @@ export function DashboardContent({
   const { data: userProfile } = useUserProfile(userId)
   const glucoseLimits = userProfile?.glucose_limits
 
-  // Refetch limits when data changes (e.g., settings might have updated)
-  // We can hook this into handleDataChange effectively if settings update triggers it, 
-  // but settings modal usually handles its own save. 
-  // Ideally, we'd have a separate context or query for this.
-  // For now, let's also fetch on mount, and maybe expose a refresher if needed.
-
-  // Derived State for Table and Chart
+  // Derived State for Table (Client-side filtering matches the UI filter)
   const processedData = useMemo(() => {
+    // 1. Filter by UI Filter (e.g. 7 days) if not custom
+    let filteredReadings = [...allFetchedReadings]
+
+    if (filter !== "custom" && filter !== "90days") {
+      const now = new Date()
+      let daysToSub = 90
+      if (filter === "7days") daysToSub = 7
+      if (filter === "today") daysToSub = 1
+      if (filter === "30days") daysToSub = 30
+
+      if (filter === "today") {
+        const todayStr = now.toISOString().split("T")[0]
+        filteredReadings = filteredReadings.filter(r => r.reading_date === todayStr)
+      } else {
+        const cutoffDate = subDays(now, daysToSub)
+        filteredReadings = filteredReadings.filter(r => {
+          const rDate = parseISO(r.reading_date)
+          return isAfter(rDate, cutoffDate)
+        })
+      }
+    }
+
     // Sort logic
-    const sorted = [...allReadings].sort((a, b) => {
+    const sorted = [...filteredReadings].sort((a, b) => {
       const dateA = a.reading_date + a.reading_time
       const dateB = b.reading_date + b.reading_time
       return sortOrder === "asc"
@@ -98,51 +118,36 @@ export function DashboardContent({
       currentReadings = currentReadingsSlice
     }
 
-    // Chart data should always be chronological (oldest to newest)
-    const chartReadings = [...allReadings].sort((a, b) => {
+    // Chart data: Use allFetchedReadings (up to 90 days) but sorted chronologically
+    const chartReadings = [...allFetchedReadings].sort((a, b) => {
       const dateA = a.reading_date + a.reading_time
       const dateB = b.reading_date + b.reading_time
       return dateA.localeCompare(dateB)
     })
 
+    // Quick View: Last 5 readings
+    const last5Readings = [...allFetchedReadings].sort((a, b) => {
+      const dateA = a.reading_date + a.reading_time
+      const dateB = b.reading_date + b.reading_time
+      return dateB.localeCompare(dateA) // descending
+    }).slice(0, 5)
+
     return {
       readings: currentReadings,
       chartReadings,
+      last5Readings,
       totalPages,
       totalItems
     }
-  }, [allReadings, viewMode, page, sortOrder, ITEMS_PER_PAGE])
+  }, [allFetchedReadings, filter, viewMode, page, sortOrder, ITEMS_PER_PAGE])
 
-  const { readings, chartReadings, totalPages, totalItems } = processedData
+  const { readings, chartReadings, last5Readings, totalPages, totalItems } = processedData
 
   // Handlers
   const handleDataChange = useCallback(async () => {
-    // Invalidate the query to trigger a refetch
     await queryClient.invalidateQueries({ queryKey: ["glucose-data"] })
     setStatsKey((prev) => prev + 1)
-
-    // Also refresh limits in case they changed (though usually handled via modal)
-    // We can manually re-trigger the effect by depending on statsKey or similar if we wanted, 
-    // but simpler to just let it be for now since Settings Modal doesn't trigger onDataChange passed here 
-    // (DashboardClient triggers it on reading add/edit). 
-    // Settings change propagation might need a page reload or context update if we want it instant without reload,
-    // but typically users might reload or navigat back.
-    // However, if the user changes settings in the modal, we want the chart to update. 
-    // The settings modal should strictly speaking invalidate 'profiles' query if we used React Query for it.
-    // Since we used raw useEffect, we won't get auto-update unless we force it.
-    // Let's assume user accepts page refresh or we add a "settings updated" callback later. 
-    // BUT the prompt says "Sync Dashboard Settings".
-    // I should probably listen for settings changes or expose a refreshLimits function.
   }, [queryClient])
-
-  // To ensure Settings Modal updates reflect here immediately, 
-  // we might need to pass a callback to `DashboardClient` if it hosted the Settings Modal, 
-  // but `DashboardClient` (at top) seems to be the Action Bar (Add Reading, Export, Settings?).
-  // If `DashboardClient` contains the Settings Modal, we should pass `onDataChange` or a specific `onSettingsChange` to it.
-
-  // Let's assume `onDataChange` is called when settings change if `DashboardClient` handles it.
-  // I will add `fetchUserPreferences` to `handleDataChange` logic or just rely on a separate specific trigger if needed.
-  // For now, let's keep it simple.
 
   const handleFilterChange = (newFilter: string, newStartDate?: string, newEndDate?: string) => {
     setFilter(newFilter)
@@ -180,53 +185,80 @@ export function DashboardContent({
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
       {/* Title Section */}
-      <div className="mb-8">
+      <div>
         <h1 className="text-3xl font-bold mb-2">Painel de Controle</h1>
         <p className="text-muted-foreground">Visão geral e monitoramento dos seus níveis de glicose.</p>
       </div>
 
+      {/* Top Actions: Giant Button & Templates */}
+      <DashboardClient userId={userId} onDataChange={handleDataChange} sortOrder={sortOrder} />
+
       {/* Stats Cards */}
       <GlucoseStats userId={userId} refreshKey={statsKey} />
 
-      <DashboardClient userId={userId} onDataChange={handleDataChange} sortOrder={sortOrder} />
-
-      {/* Chart is separate from table view logic, uses full dataset */}
-      <GlucoseChart readings={chartReadings} limits={glucoseLimits} />
-
-      <MedicacoesWidget userId={userId} />
-
-      <div className="my-8">
-        <MedicalCalendar userId={userId} />
+      {/* Main Chart Section - Added Margin Bottom for spacing */}
+      <div className="mb-12">
+        <GlucoseChart readings={chartReadings} limits={glucoseLimits} />
       </div>
 
-      <div className="mb-2">
-        {/* Duplicate DashboardClient removed or kept? The original had it twice. I will keep it but it looks redundant. */}
-        {/* Actually, the second one might be for bottom actions or different placement. I'll leave it to be safe. */}
-        <DashboardClient userId={userId} onDataChange={handleDataChange} sortOrder={sortOrder} />
+      {/* Quick View: Recent Readings (Last 5) - Added per request for 'Quick visualization' */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-8">
+          <MedicacoesWidget userId={userId} />
+
+          <div className="bg-card rounded-xl border shadow-sm p-6">
+            <h3 className="font-semibold text-lg mb-4">Últimas Leituras</h3>
+            <div className="space-y-3">
+              {last5Readings.length === 0 ? (
+                <p className="text-muted-foreground text-sm">Nenhuma leitura recente.</p>
+              ) : (
+                last5Readings.map((reading) => (
+                  <div key={reading.id} className="flex justify-between items-center p-3 bg-muted/30 rounded-lg border">
+                    <div>
+                      <p className="font-bold text-lg">{reading.reading_value} <span className="text-xs font-normal text-muted-foreground">mg/dL</span></p>
+                      <p className="text-xs text-muted-foreground capitalize">{reading.condition.replace('_', ' ')} • {format(parseISO(reading.reading_date), "dd/MM")} {reading.reading_time.slice(0, 5)}</p>
+                    </div>
+                    <div className={`w-3 h-3 rounded-full ${reading.reading_value > (glucoseLimits?.post_meal_max || 140) ? 'bg-red-500' :
+                        reading.reading_value < (glucoseLimits?.hypo_limit || 70) ? 'bg-orange-500' : 'bg-green-500'
+                      }`} />
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-8">
+          <MedicalCalendar userId={userId} />
+        </div>
       </div>
 
-      {/* Table */}
-      <GlucoseTable
-        readings={readings}
-        totalPages={totalPages}
-        totalItems={totalItems}
-        currentPage={page}
-        currentFilter={filter}
-        onFilterChange={handleFilterChange}
-        onPageChange={handlePageChange}
-        onDataChange={handleDataChange}
-        viewMode={viewMode}
-        onViewModeChange={handleViewModeChange}
-        sortOrder={sortOrder}
-        onSortChange={handleSortChange}
-        periodFilter={periodFilter}
-        onPeriodFilterChange={handlePeriodFilterChange}
-        tagFilter={tagFilter}
-        onTagFilterChange={handleTagFilterChange}
-        limits={glucoseLimits}
-      />
+
+      {/* Main Table */}
+      <div className="pt-4">
+        <h2 className="text-xl font-semibold mb-4">Histórico Detalhado</h2>
+        <GlucoseTable
+          readings={readings}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          currentPage={page}
+          currentFilter={filter}
+          onFilterChange={handleFilterChange}
+          onPageChange={handlePageChange}
+          onDataChange={handleDataChange}
+          viewMode={viewMode}
+          onViewModeChange={handleViewModeChange}
+          sortOrder={sortOrder}
+          onSortChange={handleSortChange}
+          periodFilter={periodFilter}
+          onPeriodFilterChange={handlePeriodFilterChange}
+          tagFilter={tagFilter}
+          onTagFilterChange={handleTagFilterChange}
+          limits={glucoseLimits}
+        />
+      </div>
     </div>
   )
 }

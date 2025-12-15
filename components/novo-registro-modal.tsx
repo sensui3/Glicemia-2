@@ -17,6 +17,7 @@ type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
   onDataChange: () => void
+  initialCondition?: string | null
 }
 
 const CONDITIONS = [
@@ -37,19 +38,43 @@ function getMealFromTime(time: string): string {
   return "Ceia"
 }
 
-export function NovoRegistroModal({ open, onOpenChange, onDataChange }: Props) {
+export function NovoRegistroModal({ open, onOpenChange, onDataChange, initialCondition }: Props) {
   const router = useRouter()
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
+
+  // Initialize with template or localStorage or default 'jejum'
   const [selectedCondition, setSelectedCondition] = useState("jejum")
+
   const [date, setDate] = useState(new Date().toISOString().split("T")[0])
   const [time, setTime] = useState(
     new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", hour12: false }),
   )
   const [value, setValue] = useState("")
   const [observations, setObservations] = useState("")
-
   const [detectedMeal, setDetectedMeal] = useState<string>("")
+
+  // Effect to handle open state updates (Templates or Auto-fill)
+  useEffect(() => {
+    if (open) {
+      if (initialCondition) {
+        setSelectedCondition(initialCondition)
+      } else {
+        // Auto-fill: Try to load last used condition from localStorage
+        // Only if no specific template was requested
+        const lastCondition = localStorage.getItem("last_glucose_condition")
+        if (lastCondition) {
+          setSelectedCondition(lastCondition)
+        }
+      }
+
+      // Reset inputs slightly
+      setDate(new Date().toISOString().split("T")[0])
+      setTime(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", hour12: false }))
+      setValue("")
+      setObservations("")
+    }
+  }, [open, initialCondition])
 
   useEffect(() => {
     if (selectedCondition === "antes_refeicao" || selectedCondition === "apos_refeicao") {
@@ -71,8 +96,6 @@ export function NovoRegistroModal({ open, onOpenChange, onDataChange }: Props) {
         error: userError,
       } = await supabase.auth.getUser()
 
-      console.log("[v0] User check:", user, userError)
-
       if (userError || !user) {
         toast({
           title: "Erro de autenticação",
@@ -92,21 +115,14 @@ export function NovoRegistroModal({ open, onOpenChange, onDataChange }: Props) {
         user_id: user.id,
       }
 
-      console.log("[v0] Inserting data:", dataToInsert)
-
-      const { data, error } = await supabase.from("glucose_readings").insert(dataToInsert).select()
-
-      console.log("[v0] Insert result:", { data, error })
+      const { error } = await supabase.from("glucose_readings").insert(dataToInsert).select()
 
       if (error) {
-        toast({
-          title: "Erro ao salvar registro",
-          description: error.message,
-          variant: "destructive",
-        })
-        setLoading(false)
-        return
+        throw error
       }
+
+      // Save condition to localStorage for next auto-fill
+      localStorage.setItem("last_glucose_condition", selectedCondition)
 
       toast({
         title: "Registro salvo com sucesso!",
@@ -115,21 +131,17 @@ export function NovoRegistroModal({ open, onOpenChange, onDataChange }: Props) {
 
       onOpenChange(false)
       onDataChange()
-      setLoading(false)
 
-      // Reset form
+      // Reset form handled by effect on open mostly, but good to clear value
       setValue("")
-      setObservations("")
-      setSelectedCondition("jejum")
-      setDate(new Date().toISOString().split("T")[0])
-      setTime(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", hour12: false }))
-    } catch (err) {
+    } catch (err: any) {
       console.error("[v0] Error in handleSubmit:", err)
       toast({
-        title: "Erro inesperado",
-        description: "Ocorreu um erro ao salvar o registro.",
+        title: "Erro ao salvar",
+        description: err.message || "Ocorreu um erro ao salvar o registro.",
         variant: "destructive",
       })
+    } finally {
       setLoading(false)
     }
   }
@@ -154,18 +166,18 @@ export function NovoRegistroModal({ open, onOpenChange, onDataChange }: Props) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="date">Data</Label>
-              <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+              <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required className="h-12" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="time">Hora</Label>
-              <Input id="time" type="time" value={time} onChange={(e) => setTime(e.target.value)} required />
+              <Input id="time" type="time" value={time} onChange={(e) => setTime(e.target.value)} required className="h-12" />
             </div>
           </div>
 
           {/* Condição / Evento */}
           <div className="space-y-2">
             <Label>Condição / Evento</Label>
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
               {CONDITIONS.map((condition) => {
                 const Icon = condition.icon
                 return (
@@ -173,14 +185,14 @@ export function NovoRegistroModal({ open, onOpenChange, onDataChange }: Props) {
                     key={condition.id}
                     type="button"
                     onClick={() => setSelectedCondition(condition.id)}
-                    className={`flex flex-col items-center justify-center gap-2 p-4 rounded-lg border-2 transition-all ${selectedCondition === condition.id
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-primary/50"
+                    className={`flex flex-col items-center justify-center gap-2 p-3 h-24 rounded-lg border-2 transition-all ${selectedCondition === condition.id
+                      ? "border-primary bg-primary/5 shadow-sm"
+                      : "border-border hover:border-primary/50 bg-card"
                       }`}
                     aria-pressed={selectedCondition === condition.id}
                   >
-                    <Icon className="w-6 h-6" />
-                    <span className="text-xs font-medium">{condition.label}</span>
+                    <Icon className={`w-6 h-6 ${selectedCondition === condition.id ? "text-primary" : "text-muted-foreground"}`} />
+                    <span className={`text-xs font-medium ${selectedCondition === condition.id ? "text-primary" : "text-muted-foreground"}`}>{condition.label}</span>
                   </button>
                 )
               })}
@@ -195,23 +207,25 @@ export function NovoRegistroModal({ open, onOpenChange, onDataChange }: Props) {
           </div>
 
           {/* Resultado da Glicemia */}
-          <div className="bg-muted rounded-lg p-6">
-            <Label className="text-sm text-muted-foreground mb-4 block">RESULTADO DA GLICEMIA</Label>
-            <div className="flex items-end gap-2 mb-2">
+          <div className="bg-muted/50 border rounded-xl p-6">
+            <Label className="text-sm font-semibold text-muted-foreground mb-4 block uppercase tracking-wide">Valor da Glicemia</Label>
+            <div className="flex items-center justify-center gap-4 mb-2">
               <Input
                 type="number"
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
-                placeholder="000"
+                placeholder="---"
                 required
                 min="0"
                 max="999"
-                aria-describedby="glucose-range-desc"
-                className="text-5xl font-bold h-20 text-center bg-background"
+                autoFocus
+                className="text-6xl font-bold h-24 w-48 text-center bg-background border-2 focus-visible:ring-primary shadow-sm rounded-xl"
               />
-              <span className="text-2xl font-medium text-muted-foreground mb-4">mg/dL</span>
+              <span className="text-xl font-medium text-muted-foreground self-end mb-6">mg/dL</span>
             </div>
-            <p className="text-xs text-muted-foreground text-center" id="glucose-range-desc">Valores normais de jejum: 70-99 mg/dL</p>
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              {selectedCondition === 'jejum' ? 'Meta: 70-99 mg/dL' : 'Meta pós-refeição: <140 mg/dL'}
+            </p>
           </div>
 
           {/* Observações */}
@@ -223,16 +237,17 @@ export function NovoRegistroModal({ open, onOpenChange, onDataChange }: Props) {
               onChange={(e) => setObservations(e.target.value)}
               placeholder="O que você comeu? Como se sente?"
               rows={3}
+              className="resize-none"
             />
           </div>
 
           {/* Actions */}
-          <div className="flex gap-3 pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
+          <div className="flex gap-4 pt-4">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1 h-12 text-base">
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading} className="flex-1">
-              <Save className="w-4 h-4 mr-2" />
+            <Button type="submit" disabled={loading} className="flex-1 h-12 text-base bg-primary hover:bg-primary/90 font-semibold shadow-md">
+              <Save className="w-5 h-5 mr-2" />
               {loading ? "Salvando..." : "Salvar Registro"}
             </Button>
           </div>
