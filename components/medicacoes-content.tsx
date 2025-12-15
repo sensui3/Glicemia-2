@@ -95,74 +95,90 @@ export function MedicacoesContent({ userId }: Props) {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold mb-2">Medicações</h1>
           <p className="text-muted-foreground">Gerencie suas insulinas e outros medicamentos.</p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)} className="bg-blue-600 hover:bg-blue-700">
-          <Plus className="w-4 h-4 mr-2" />
-          Nova Medicação
+      </div>
+
+      {/* Main Action */}
+      <div className="flex flex-col md:flex-row gap-4">
+        <Button
+          onClick={() => setIsModalOpen(true)}
+          className="h-24 text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg transition-transform hover:scale-[1.02] active:scale-[0.98] w-full md:w-auto md:min-w-[350px]"
+        >
+          <Plus className="w-8 h-8 mr-3" />
+          NOVA MEDICAÇÃO
         </Button>
       </div>
 
       {continuousMeds.length > 0 && (
-        <div className="mb-8">
-          <div className="flex items-center gap-2 mb-4">
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
             <Clock className="w-5 h-5 text-amber-600" />
             <h2 className="text-xl font-semibold">Medicações de Uso Contínuo</h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {continuousMeds.map((med) => (
               <div
                 key={med.id}
-                className={`bg-card rounded-lg border-2 p-4 transition-all ${med.is_active ? "border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900" : "border-border bg-muted opacity-60"
+                className={`bg-card rounded-xl border shadow-sm p-6 transition-all relative overflow-hidden group hover:shadow-md ${med.is_active ? "border-amber-200/50 dark:border-amber-900/50" : "opacity-60"
                   }`}
               >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-lg">{med.medication_name}</h3>
-                      {med.is_active ? (
-                        <CheckCircle className="w-4 h-4 text-green-600" />
-                      ) : (
-                        <XCircle className="w-4 h-4 text-muted-foreground" />
-                      )}
+                {/* Decorative background element for active cards */}
+                {med.is_active && (
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-amber-50 dark:bg-amber-900/10 rounded-bl-full -mr-4 -mt-4 -z-0 pointer-events-none transition-colors" />
+                )}
+
+                <div className="relative z-10">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <h3 className="font-bold text-lg leading-tight">{med.medication_name}</h3>
+                        {med.is_active ? (
+                          <CheckCircle className="w-4 h-4 text-green-600" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-muted-foreground" />
+                        )}
+                      </div>
+                      <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+                        {getMedicationTypeLabel(med.medication_type)}
+                      </span>
                     </div>
-                    <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-                      {getMedicationTypeLabel(med.medication_type)}
-                    </span>
                   </div>
-                </div>
-                <div className="space-y-2 text-sm mb-4">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Dosagem Padrão:</span>
-                    <span className="font-semibold">
-                      {med.continuous_dosage} {med.continuous_dosage_unit}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Horário Habitual:</span>
-                    <span className="font-semibold">{med.administration_time.slice(0, 5)}</span>
-                  </div>
-                  {med.notes && (
-                    <div className="pt-2 border-t">
-                      <p className="text-muted-foreground text-xs">{med.notes}</p>
+                  <div className="space-y-2.5 text-sm mb-5 text-muted-foreground">
+                    <div className="flex justify-between items-center bg-muted/30 p-2 rounded-md">
+                      <span>Dosagem</span>
+                      <span className="font-semibold text-foreground">
+                        {med.continuous_dosage} {med.continuous_dosage_unit}
+                      </span>
                     </div>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => handleToggleActive(med)} className="flex-1">
-                    {med.is_active ? "Pausar" : "Reativar"}
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => setEditingMed(med)}>
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleDelete(med.id)}>
-                    <Trash2 className="w-4 h-4 text-red-600" />
-                  </Button>
+                    <div className="flex justify-between items-center bg-muted/30 p-2 rounded-md">
+                      <span>Horário</span>
+                      <span className="font-semibold text-foreground">{med.administration_time.slice(0, 5)}</span>
+                    </div>
+                    {med.notes && (
+                      <div className="pt-2">
+                        <p className="text-xs italic line-clamp-2">{med.notes}</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => handleToggleActive(med)} className="flex-1 hover:bg-muted">
+                      {med.is_active ? "Pausar" : "Reativar"}
+                    </Button>
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-blue-600" onClick={() => setEditingMed(med)}>
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-600" onClick={() => handleDelete(med.id)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}
@@ -173,59 +189,62 @@ export function MedicacoesContent({ userId }: Props) {
       {/* Medications List */}
       <div>
         <h2 className="text-xl font-semibold mb-4">Histórico de Medicações</h2>
-        <div className="bg-card rounded-xl shadow-sm border border-border">
+        <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
           {loading ? (
             <div className="p-8 text-center text-muted-foreground">Carregando...</div>
           ) : medications.length === 0 && continuousMeds.length === 0 ? (
-            <div className="p-12 text-center">
-              <div className="bg-muted rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+            <div className="p-16 text-center">
+              <div className="bg-muted rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4 border shadow-sm">
                 <Pill className="w-8 h-8 text-muted-foreground" />
               </div>
               <h3 className="text-lg font-semibold mb-2">Nenhuma medicação registrada</h3>
-              <p className="text-muted-foreground mb-4">Comece adicionando suas insulinas e medicamentos.</p>
-              <Button onClick={() => setIsModalOpen(true)} className="bg-blue-600 hover:bg-blue-700">
+              <p className="text-muted-foreground mb-6 max-w-sm mx-auto">Comece adicionando suas insulinas e medicamentos para manter seu histórico organizado.</p>
+              <Button onClick={() => setIsModalOpen(true)} className="bg-blue-600 hover:bg-blue-700 shadow-sm">
                 <Plus className="w-4 h-4 mr-2" />
                 Adicionar Primeira Medicação
               </Button>
             </div>
           ) : medications.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground">Nenhuma medicação pontual registrada ainda.</div>
+            <div className="p-12 text-center text-muted-foreground bg-muted/10">Nenhuma medicação pontual registrada ainda.</div>
           ) : (
             <div className="divide-y divide-border">
               {medications.map((med) => (
-                <div key={med.id} className="p-6 hover:bg-muted/50 transition-colors">
+                <div key={med.id} className="p-4 sm:p-6 hover:bg-muted/30 transition-colors">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold">{med.medication_name}</h3>
+                        <h3 className="text-lg font-semibold text-foreground">{med.medication_name}</h3>
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
                           {getMedicationTypeLabel(med.medication_type)}
                         </span>
                       </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-muted-foreground">
-                        <div>
-                          <span className="font-medium">Data:</span>{" "}
-                          {format(new Date(med.administration_date), "dd/MM/yyyy")}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-2 text-sm text-muted-foreground">
+                        <div className="flex flex-col">
+                          <span className="text-xs uppercase tracking-wider font-medium text-muted-foreground/70">Data</span>
+                          <span className="font-medium text-foreground">{format(new Date(med.administration_date), "dd/MM/yyyy")}</span>
                         </div>
-                        <div>
-                          <span className="font-medium">Hora:</span> {med.administration_time.slice(0, 5)}
+                        <div className="flex flex-col">
+                          <span className="text-xs uppercase tracking-wider font-medium text-muted-foreground/70">Hora</span>
+                          <span className="font-medium text-foreground">{med.administration_time.slice(0, 5)}</span>
                         </div>
-                        <div>
-                          <span className="font-medium">Dosagem:</span> {med.dosage} {med.dosage_unit}
+                        <div className="flex flex-col">
+                          <span className="text-xs uppercase tracking-wider font-medium text-muted-foreground/70">Dosagem</span>
+                          <span className="font-medium text-foreground">{med.dosage} {med.dosage_unit}</span>
                         </div>
                         {med.notes && (
-                          <div className="col-span-2 md:col-span-4">
-                            <span className="font-medium">Obs:</span> {med.notes}
+                          <div className="col-span-2 md:col-span-1 flex flex-col">
+                            <span className="text-xs uppercase tracking-wider font-medium text-muted-foreground/70">Obs</span>
+                            <span className="truncate" title={med.notes}>{med.notes}</span>
                           </div>
                         )}
                       </div>
                     </div>
-                    <div className="flex gap-2 ml-4">
-                      <Button variant="ghost" size="icon" onClick={() => setEditingMed(med)}>
-                        <Edit className="w-4 h-4 text-muted-foreground" />
+                    <div className="flex gap-1 ml-4 self-center">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-blue-600" onClick={() => setEditingMed(med)}>
+                        <Edit className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(med.id)}>
-                        <Trash2 className="w-4 h-4 text-red-600" />
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-600" onClick={() => handleDelete(med.id)}>
+                        <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
                   </div>
