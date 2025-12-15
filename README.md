@@ -32,8 +32,8 @@ Para informações técnicas detalhadas sobre arquitetura, banco de dados, compo
 ### Stack Tecnológica
 
 #### Frontend
-*   **Framework**: [Next.js 16.0.10](https://nextjs.org/) (App Router)
-*   **UI Library**: React 19.2.0 + TypeScript 5.x
+*   **Framework**: [Next.js 16.0.7](https://nextjs.org/) (App Router)
+*   **UI Library**: React 19.2.1 + TypeScript 5.x
 *   **Gerenciamento de Estado**: TanStack Query 5.90.12 para cache inteligente
 *   **Formulários**: React Hook Form + Zod para validação robusta
 *   **Estilização**: Tailwind CSS 4.1.9 + Shadcn/ui (Radix UI primitives)
@@ -53,6 +53,26 @@ Para informações técnicas detalhadas sobre arquitetura, banco de dados, compo
 *   **Linting**: ESLint para qualidade de código
 *   **Build Tool**: pnpm + Next.js build
 *   **Deployment**: Vercel (otimizado para Next.js)
+
+## 🔒 Segurança
+
+### Vulnerabilidades Corrigidas
+
+Este projeto foi atualizado para corrigir uma vulnerabilidade crítica de execução remota de código (RCE) no React Server Components. A atualização foi aplicada em **15/12/2025**:
+
+- **CVE-2025-66478**: Vulnerabilidade crítica (CVSS 10.0) afetando React Server Components em Next.js e React
+- **Versões afetadas** (corrigidas em 15/12/2025):
+  - Next.js: 15.x ou 16.x com App Router
+  - React: 19.0.0, 19.1.0, 19.1.1, 19.2.0
+- **Versões corrigidas aplicadas**:
+  - Next.js: **16.0.7**
+  - React & React-DOM: **19.2.1**
+
+Para mais detalhes, consulte:
+- [Next.js Security Update](https://nextjs.org/blog/security-update-2025-12-11)
+- [Vercel Changelog CVE-2025-55182](https://vercel.com/changelog/cve-2025-55182)
+
+**Nota**: Se você estiver fazendo deploy no Vercel, versões vulneráveis são bloqueadas automaticamente durante o build.
 
 ## ⚙️ Instalação e Configuração
 

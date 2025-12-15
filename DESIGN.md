@@ -20,9 +20,9 @@ O projeto "Controle de Glicemia" é uma aplicação web moderna desenvolvida par
 ### Stack Tecnológica
 
 #### Frontend
-- **Framework**: Next.js 16 (App Router)
+- **Framework**: Next.js 16.0.7 (App Router)
 - **Linguagem**: TypeScript
-- **Biblioteca de Interface**: React 19
+- **Biblioteca de Interface**: React 19.2.1
 - **Gerenciamento de Estado**: TanStack Query (React Query)
 - **Estilização**: Tailwind CSS + Shadcn/ui
 - **Ícones**: Lucide React
@@ -194,6 +194,7 @@ type Doctor = {
 - **Autenticação**: Supabase Auth com JWT
 - **Validação**: Zod schemas para validação de dados
 - **Sanitização**: Input sanitizado no frontend
+- **Atualizações de Segurança**: Vulnerabilidades críticas corrigidas (e.g., CVE-2025-66478 - Execução Remota de Código corrigida)
 
 ### Índices de Performance
 ```sql
