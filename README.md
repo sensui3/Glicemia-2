@@ -5,34 +5,54 @@ Sistema moderno para acompanhamento de glicose, desenvolvido para ajudar diabét
 
 ![Dashboard Preview](./public/preview-placeholder.png)
 
+## 📖 Documentação
+
+Para informações técnicas detalhadas sobre arquitetura, banco de dados, componentes e design do sistema, consulte o **[DESIGN.md](./DESIGN.md)**.
+
 ## 🚀 Funcionalidades Principais
 
-*   **Dashboard Intuitivo**: Visão geral com gráficos e estatísticas vitais.
-*   **Registro Rápido**: Adicione medições de glicemia em segundos com contexto (jejum, pós-refeição, etc.).
-*   **Calendário Médico**: Gerencie consultas, exames e vacinas. Sincronizado na nuvem (Supabase Storage).
-*   **Histórico Detalhado**: Tabela pesquisável e filtrável de todas as suas leituras.
-*   **Insights Visuais**: Gráficos de tendência para identificar padrões.
-*   **Gestão de Medicamentos**: Acompanhe o uso de insulina e outros medicamentos com suporte a medicações contínuas.
-*   **Gestão de Médicos**: Cadastre e organize informações dos seus profissionais de saúde.
-*   **Autenticação Seguro**: Sistema completo de login, cadastro e verificação de email.
-*   **Tema Personalizável**: Suporte a temas claro e escuro.
-*   **Exportação de Dados**: Exporte seus registros para análise externa.
-*   **Design Responsivo**: Interface otimizada para desktop e dispositivos móveis.
-*   **Alertas Inteligentes**: Feedback imediato para níveis altos (cetoacidose) ou baixos (hipoglicemia).
-*   **Acessibilidade**: Interface otimizada para leitores de tela e navegação por teclado.
+*   **Dashboard Intuitivo**: Visão geral com gráficos e estatísticas vitais
+*   **Registro Rápido**: Adicione medições de glicemia em segundos com contexto (jejum, pós-refeição, ao dormir, etc.)
+*   **Monitoramento Nutricional**: Registre carboidratos e calorias consumidas nas refeições
+*   **Calendário Médico**: Gerencie consultas, exames e vacinas com lembretes inteligentes
+*   **Histórico Detalhado**: Tabela pesquisável, filtrável e paginada de todas as leituras
+*   **Insights Visuais**: Gráficos interativos de tendência com período customizável
+*   **Gestão de Medicamentos**: Acompanhe diferentes tipos de insulina e medicamentos com suporte a medicações contínuas
+*   **Gestão de Médicos**: Cadastre e organize informações completas dos profissionais de saúde
+*   **Perfil Personalizável**: Limites de glicemia configuráveis por usuário (mg/dL ou mmol/L)
+*   **Autenticação Seguro**: Sistema completo de login, cadastro e verificação de email
+*   **Tema Personalizável**: Suporte automático a temas claro e escuro
+*   **Exportação de Dados**: Exporte registros em formato CSV para análise externa
+*   **Design Responsivo**: Interface otimizada para desktop, tablet e dispositivos móveis
+*   **Alertas Inteligentes**: Feedback visual imediato para níveis de hipoglicemia e hiperglicemia
+*   **Acessibilidade**: Interface totalmente acessível com suporte a leitores de tela e navegação por teclado
 
-## 🛠️ Tecnologias Utilizadas
+## 🏗️ Arquitetura do Sistema
 
-Este projeto utiliza uma stack moderna e performática:
+### Stack Tecnológica
 
-*   **Frontend**: [Next.js 16](https://nextjs.org/) (App Router), React, TypeScript per linter e typing.
-*   **Estilização**: Tailwind CSS + Shadcn/ui (Radix UI) para componentes acessíveis e bonitos.
-*   **Ícones**: Lucide React.
-*   **Gráficos**: Recharts.
-*   **Gerenciamento de Estado**: TanStack Query (React Query) para cache e otimização de requisições.
-*   **Backend / Auth**: [Supabase](https://supabase.com/).
-*   **Persistência**: Supabase Database (PostgreSQL) e Storage (para arquivos JSON).
-*   **Testes e Documentação**: Storybook para desenvolvimento de componentes.
+#### Frontend
+*   **Framework**: [Next.js 16.0.10](https://nextjs.org/) (App Router)
+*   **UI Library**: React 19.2.0 + TypeScript 5.x
+*   **Gerenciamento de Estado**: TanStack Query 5.90.12 para cache inteligente
+*   **Formulários**: React Hook Form + Zod para validação robusta
+*   **Estilização**: Tailwind CSS 4.1.9 + Shadcn/ui (Radix UI primitives)
+*   **Temas**: next-themes para alternância automática
+*   **Gráficos**: Recharts para visualizações interativas
+*   **Ícones**: Lucide React 0.454.0
+
+#### Backend & Database
+*   **Backend-as-a-Service**: [Supabase](https://supabase.com/)
+*   **Database**: PostgreSQL com Row Level Security (RLS)
+*   **Authentication**: Supabase Auth (JWT)
+*   **File Storage**: Supabase Storage para backups e arquivos
+
+#### Desenvolvimento & Qualidade
+*   **Testes**: Vitest + Playwright para testes unitários e E2E
+*   **Storybook**: Desenvolvimento isolado de componentes
+*   **Linting**: ESLint para qualidade de código
+*   **Build Tool**: pnpm + Next.js build
+*   **Deployment**: Vercel (otimizado para Next.js)
 
 ## ⚙️ Instalação e Configuração
 
@@ -49,21 +69,26 @@ Este projeto utiliza uma stack moderna e performática:
     cd controle-glicemia
     ```
 
-2.  **Instale as dependências**
+2.  **Configure o Supabase**
+    *   Crie um projeto no Supabase
+    *   Vá em **SQL Editor** e execute os scripts da pasta `scripts/` na seguinte ordem:
+        1. `scripts/001_create_tables.sql` (Cria tabelas principais)
+        2. `scripts/002_create_medications_table.sql` (Tabela de medicações)
+        3. `scripts/002_setup_storage.sql` (Configura bucket de armazenamento)
+        4. `scripts/003_create_profiles.sql` (Perfis de usuário)
+        5. `scripts/003_add_continuous_medications.sql` (Suporte medicações contínuas)
+        6. `scripts/003_add_nutrition_fields.sql` (Campos nutricionais)
+        7. `scripts/004_add_medication_dashboard_visibility.sql` (Visibilidade no dashboard)
+
+3.  **Instale as dependências**
     ```bash
     npm install
     # ou
     pnpm install
     ```
 
-3.  **Configure o Supabase**
-    *   Crie um projeto no Supabase.
-    *   Vá em **SQL Editor** e execute os scripts da pasta `scripts/`:
-        1.  `scripts/001_create_tables.sql` (Cria tabelas do banco)
-        2.  `scripts/002_setup_storage.sql` (Configura bucket de armazenamento)
-
 4.  **Configure as Variáveis de Ambiente**
-    *   Renomeie `.env.example` para `.env.local` (ou crie um novo).
+    *   Crie um arquivo `.env.local` na raiz do projeto
     *   Adicione suas chaves do Supabase:
     ```env
     NEXT_PUBLIC_SUPABASE_URL=sua_url_aqui
