@@ -139,7 +139,7 @@ export function GlucoseTable({
     <>
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         {/* ... (filters) */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4 border-b border-gray-100">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4 border-b border-border">
           {/* ... (TableFilters and buttons) */}
           <TableFilters
             currentFilter={currentFilter}
@@ -151,47 +151,51 @@ export function GlucoseTable({
           />
           <div className="flex items-center gap-2">
             {/* ... (Sort buttons) */}
-            <div className="flex items-center bg-gray-100 p-1 rounded-lg">
+            <div className="flex items-center bg-muted p-1 rounded-lg">
               <button
                 onClick={() => onSortChange("desc")}
                 className={`p-2 rounded-md transition-all ${sortOrder === "desc"
-                  ? "bg-white text-teal-700 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
+                  ? "bg-background text-primary shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
                   }`}
                 title="Mais Recentes Primeiro"
+                aria-label="Mais Recentes Primeiro"
               >
                 <ArrowDownAZ className="w-4 h-4" />
               </button>
               <button
                 onClick={() => onSortChange("asc")}
                 className={`p-2 rounded-md transition-all ${sortOrder === "asc"
-                  ? "bg-white text-teal-700 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
+                  ? "bg-background text-primary shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
                   }`}
                 title="Mais Antigos Primeiro"
+                aria-label="Mais Antigos Primeiro"
               >
                 <ArrowUpAZ className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="flex items-center bg-gray-100 p-1 rounded-lg">
+            <div className="flex items-center bg-muted p-1 rounded-lg">
               <button
                 onClick={() => onViewModeChange("standard")}
                 className={`p-2 rounded-md transition-all ${viewMode === "standard"
-                  ? "bg-white text-teal-700 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
+                  ? "bg-background text-primary shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
                   }`}
                 title="Visualização em Lista"
+                aria-label="Visualização em Lista"
               >
                 <LayoutList className="w-4 h-4" />
               </button>
               <button
                 onClick={() => onViewModeChange("medical")}
                 className={`p-2 rounded-md transition-all ${viewMode === "medical"
-                  ? "bg-white text-teal-700 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700"
+                  ? "bg-background text-primary shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
                   }`}
                 title="Visualização Médica"
+                aria-label="Visualização Médica"
               >
                 <Grid3X3 className="w-4 h-4" />
               </button>
@@ -203,29 +207,29 @@ export function GlucoseTable({
         {viewMode === "standard" ? (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="bg-muted/50 border-b border-border">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Data / Hora
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Contexto
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Glicemia
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Observações
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Ações
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-border">
                 {readings.map((reading) => {
                   const status = getGlucoseStatus(reading.reading_value, reading.condition, limits)
                   const [year, month, day] = reading.reading_date.split("-")
@@ -233,25 +237,25 @@ export function GlucoseTable({
                   const formattedTime = reading.reading_time.slice(0, 5)
 
                   return (
-                    <tr key={reading.id} className="hover:bg-gray-50">
+                    <tr key={reading.id} className="hover:bg-muted/50">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{formattedDate}</div>
-                        <div className="text-sm text-gray-500">{formattedTime}</div>
+                        <div className="text-sm font-medium text-foreground">{formattedDate}</div>
+                        <div className="text-sm text-muted-foreground">{formattedTime}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2">
                           {getConditionIcon(reading.condition)}
-                          <span className="text-sm text-gray-900">
+                          <span className="text-sm text-foreground">
                             {getConditionLabel(reading.condition, reading.reading_time)}
                           </span>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-bold text-gray-900">{reading.reading_value} mg/dL</div>
+                        <div className="text-sm font-bold text-foreground">{reading.reading_value} mg/dL</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(status)}</td>
                       <td className="px-6 py-4">
-                        <div className="text-sm text-gray-500 max-w-xs truncate">{reading.observations || "-"}</div>
+                        <div className="text-sm text-muted-foreground max-w-xs truncate">{reading.observations || "-"}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         <div className="flex items-center justify-end gap-2">

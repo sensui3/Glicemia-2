@@ -139,12 +139,12 @@ export function NovoRegistroModal({ open, onOpenChange, onDataChange }: Props) {
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <div className="bg-blue-100 rounded-full p-2">
-              <Droplet className="w-6 h-6 text-blue-600" />
+            <div className="bg-primary/10 rounded-full p-2">
+              <Droplet className="w-6 h-6 text-primary" />
             </div>
             <div>
               <DialogTitle className="text-xl">Novo Registro</DialogTitle>
-              <p className="text-sm text-gray-500">Adicione uma nova leitura de glicemia</p>
+              <p className="text-sm text-muted-foreground">Adicione uma nova leitura de glicemia</p>
             </div>
           </div>
         </DialogHeader>
@@ -173,11 +173,11 @@ export function NovoRegistroModal({ open, onOpenChange, onDataChange }: Props) {
                     key={condition.id}
                     type="button"
                     onClick={() => setSelectedCondition(condition.id)}
-                    className={`flex flex-col items-center justify-center gap-2 p-4 rounded-lg border-2 transition-all ${
-                      selectedCondition === condition.id
-                        ? "border-blue-500 bg-blue-50"
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
+                    className={`flex flex-col items-center justify-center gap-2 p-4 rounded-lg border-2 transition-all ${selectedCondition === condition.id
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-primary/50"
+                      }`}
+                    aria-pressed={selectedCondition === condition.id}
                   >
                     <Icon className="w-6 h-6" />
                     <span className="text-xs font-medium">{condition.label}</span>
@@ -186,8 +186,8 @@ export function NovoRegistroModal({ open, onOpenChange, onDataChange }: Props) {
               })}
             </div>
             {detectedMeal && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2">
-                <p className="text-sm text-blue-800">
+              <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 mt-2">
+                <p className="text-sm text-primary">
                   <span className="font-medium">Refeição detectada:</span> {detectedMeal}
                 </p>
               </div>
@@ -195,8 +195,8 @@ export function NovoRegistroModal({ open, onOpenChange, onDataChange }: Props) {
           </div>
 
           {/* Resultado da Glicemia */}
-          <div className="bg-gray-50 rounded-lg p-6">
-            <Label className="text-sm text-gray-600 mb-4 block">RESULTADO DA GLICEMIA</Label>
+          <div className="bg-muted rounded-lg p-6">
+            <Label className="text-sm text-muted-foreground mb-4 block">RESULTADO DA GLICEMIA</Label>
             <div className="flex items-end gap-2 mb-2">
               <Input
                 type="number"
@@ -206,11 +206,12 @@ export function NovoRegistroModal({ open, onOpenChange, onDataChange }: Props) {
                 required
                 min="0"
                 max="999"
-                className="text-5xl font-bold h-20 text-center bg-white"
+                aria-describedby="glucose-range-desc"
+                className="text-5xl font-bold h-20 text-center bg-background"
               />
-              <span className="text-2xl font-medium text-gray-600 mb-4">mg/dL</span>
+              <span className="text-2xl font-medium text-muted-foreground mb-4">mg/dL</span>
             </div>
-            <p className="text-xs text-gray-500 text-center">Valores normais de jejum: 70-99 mg/dL</p>
+            <p className="text-xs text-muted-foreground text-center" id="glucose-range-desc">Valores normais de jejum: 70-99 mg/dL</p>
           </div>
 
           {/* Observações */}
@@ -230,7 +231,7 @@ export function NovoRegistroModal({ open, onOpenChange, onDataChange }: Props) {
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading} className="flex-1 bg-blue-600 hover:bg-blue-700">
+            <Button type="submit" disabled={loading} className="flex-1">
               <Save className="w-4 h-4 mr-2" />
               {loading ? "Salvando..." : "Salvar Registro"}
             </Button>

@@ -76,15 +76,15 @@ export function MobileMenu() {
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="lg:hidden">
+        <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Abrir menu">
           <Menu className="w-5 h-5" />
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="w-72 p-0">
-        <SheetHeader className="border-b border-gray-200 p-4">
+        <SheetHeader className="border-b border-border p-4">
           <SheetTitle className="flex items-center gap-2 text-left">
-            <div className="bg-teal-600 rounded-lg p-1.5">
-              <Activity className="w-4 h-4 text-white" />
+            <div className="bg-primary rounded-lg p-1.5">
+              <Activity className="w-4 h-4 text-primary-foreground" />
             </div>
             <span className="font-semibold text-sm">Controle Glicemia</span>
           </SheetTitle>
@@ -105,8 +105,8 @@ export function MobileMenu() {
                     className={cn(
                       "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors",
                       isActive
-                        ? "bg-teal-50 text-teal-700 font-medium"
-                        : "text-gray-700 hover:bg-gray-100 hover:text-gray-900",
+                        ? "bg-primary/10 text-primary font-medium"
+                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
                     )}
                   >
                     <Icon className="h-5 w-5 flex-shrink-0" />
@@ -122,7 +122,7 @@ export function MobileMenu() {
           <div className="p-4">
             <Button
               variant="ghost"
-              className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+              className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
               onClick={handleLogout}
               disabled={isLoggingOut}
             >

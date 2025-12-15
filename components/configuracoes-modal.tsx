@@ -8,8 +8,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2, Download, HelpCircle, RotateCcw, ExternalLink } from "lucide-react"
+import { Loader2, Download, HelpCircle, RotateCcw, ExternalLink, Eye } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
 import { AlterarSenhaModal } from "./alterar-senha-modal"
 import { GlucoseLimits } from "@/lib/types"
 
@@ -32,6 +33,7 @@ export function ConfiguracoesModal({ open, onOpenChange }: Props) {
   const [fullName, setFullName] = useState("")
   const [glucoseUnit, setGlucoseUnit] = useState<"mg/dL" | "mmol/L">("mg/dL")
   const [limits, setLimits] = useState<GlucoseLimits>(DEFAULT_LIMITS)
+  const [highContrast, setHighContrast] = useState(false)
 
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -43,8 +45,20 @@ export function ConfiguracoesModal({ open, onOpenChange }: Props) {
   useEffect(() => {
     if (open) {
       loadUserData()
+      const isHighContrast = localStorage.getItem("high-contrast") === "true"
+      setHighContrast(isHighContrast)
     }
   }, [open])
+
+  useEffect(() => {
+    if (highContrast) {
+      document.documentElement.classList.add("high-contrast")
+      localStorage.setItem("high-contrast", "true")
+    } else {
+      document.documentElement.classList.remove("high-contrast")
+      localStorage.setItem("high-contrast", "false")
+    }
+  }, [highContrast])
 
   const loadUserData = async () => {
     setIsLoading(true)
@@ -197,14 +211,14 @@ export function ConfiguracoesModal({ open, onOpenChange }: Props) {
               {/* Seção 1: Conta e Perfil */}
               <section className="space-y-4">
                 <div className="flex items-center justify-between border-b pb-2">
-                  <h3 className="font-semibold text-lg text-gray-900">Conta e Perfil</h3>
+                  <h3 className="font-semibold text-lg text-foreground">Conta e Perfil</h3>
                 </div>
 
                 <div className="grid gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="email">Email</Label>
-                    <Input id="email" value={email} disabled className="bg-gray-50 text-gray-500" />
-                    <p className="text-[11px] text-gray-500">O e-mail não pode ser alterado no momento.</p>
+                    <Input id="email" value={email} disabled className="bg-muted text-muted-foreground" />
+                    <p className="text-[11px] text-muted-foreground">O e-mail não pode ser alterado no momento.</p>
                   </div>
 
                   <div className="grid gap-2">
@@ -232,7 +246,7 @@ export function ConfiguracoesModal({ open, onOpenChange }: Props) {
               {/* Seção 2: Valores de Referência e Metas */}
               <section className="space-y-4">
                 <div className="flex items-center justify-between border-b pb-2">
-                  <h3 className="font-semibold text-lg text-gray-900">Valores de Referência e Metas</h3>
+                  <h3 className="font-semibold text-lg text-foreground">Valores de Referência e Metas</h3>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -245,7 +259,7 @@ export function ConfiguracoesModal({ open, onOpenChange }: Props) {
                         value={limits.fasting_min}
                         onChange={(e) => setLimits({ ...limits, fasting_min: Number(e.target.value) })}
                       />
-                      <span className="absolute right-3 top-2.5 text-xs text-gray-500">mg/dL</span>
+                      <span className="absolute right-3 top-2.5 text-xs text-muted-foreground">mg/dL</span>
                     </div>
                   </div>
 
@@ -258,7 +272,7 @@ export function ConfiguracoesModal({ open, onOpenChange }: Props) {
                         value={limits.fasting_max}
                         onChange={(e) => setLimits({ ...limits, fasting_max: Number(e.target.value) })}
                       />
-                      <span className="absolute right-3 top-2.5 text-xs text-gray-500">mg/dL</span>
+                      <span className="absolute right-3 top-2.5 text-xs text-muted-foreground">mg/dL</span>
                     </div>
                   </div>
 
@@ -271,7 +285,7 @@ export function ConfiguracoesModal({ open, onOpenChange }: Props) {
                         value={limits.post_meal_max}
                         onChange={(e) => setLimits({ ...limits, post_meal_max: Number(e.target.value) })}
                       />
-                      <span className="absolute right-3 top-2.5 text-xs text-gray-500">mg/dL</span>
+                      <span className="absolute right-3 top-2.5 text-xs text-muted-foreground">mg/dL</span>
                     </div>
                   </div>
 
@@ -285,7 +299,7 @@ export function ConfiguracoesModal({ open, onOpenChange }: Props) {
                         onChange={(e) => setLimits({ ...limits, hypo_limit: Number(e.target.value) })}
                         className="border-red-200 focus:border-red-400 focus:ring-red-400"
                       />
-                      <span className="absolute right-3 top-2.5 text-xs text-gray-500">mg/dL</span>
+                      <span className="absolute right-3 top-2.5 text-xs text-muted-foreground">mg/dL</span>
                     </div>
                   </div>
 
@@ -299,7 +313,7 @@ export function ConfiguracoesModal({ open, onOpenChange }: Props) {
                         onChange={(e) => setLimits({ ...limits, hyper_limit: Number(e.target.value) })}
                         className="border-orange-200 focus:border-orange-400 focus:ring-orange-400"
                       />
-                      <span className="absolute right-3 top-2.5 text-xs text-gray-500">mg/dL</span>
+                      <span className="absolute right-3 top-2.5 text-xs text-muted-foreground">mg/dL</span>
                     </div>
                   </div>
                 </div>
@@ -309,7 +323,7 @@ export function ConfiguracoesModal({ open, onOpenChange }: Props) {
                     variant="ghost"
                     size="sm"
                     onClick={handleRestoreDefaults}
-                    className="text-gray-500 hover:text-gray-900 h-8 px-2"
+                    className="text-muted-foreground hover:text-foreground h-8 px-2"
                   >
                     <RotateCcw className="w-3.5 h-3.5 mr-2" />
                     Restaurar Valores Padrão
@@ -320,7 +334,7 @@ export function ConfiguracoesModal({ open, onOpenChange }: Props) {
               {/* Seção 3: Configurações do Sistema e Dados */}
               <section className="space-y-4">
                 <div className="flex items-center justify-between border-b pb-2">
-                  <h3 className="font-semibold text-lg text-gray-900">Configurações do Sistema e Dados</h3>
+                  <h3 className="font-semibold text-lg text-foreground">Configurações do Sistema e Dados</h3>
                 </div>
 
                 <div className="grid gap-6">
@@ -352,11 +366,11 @@ export function ConfiguracoesModal({ open, onOpenChange }: Props) {
 
                   <div className="space-y-3 pt-2">
                     <Label>Sobre o App</Label>
-                    <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-600 flex justify-between items-center">
+                    <div className="bg-muted rounded-lg p-3 text-sm text-foreground flex justify-between items-center">
                       <span>Versão 1.0.0</span>
                       <a
                         href="#"
-                        className="flex items-center text-blue-600 hover:underline"
+                        className="flex items-center text-primary hover:underline"
                         onClick={(e) => {
                           e.preventDefault()
                           toast({ description: "FAQ indisponível no momento." }) // Placeholder
@@ -370,6 +384,33 @@ export function ConfiguracoesModal({ open, onOpenChange }: Props) {
                 </div>
               </section>
 
+              {/* Seção 4: Acessibilidade */}
+              <section className="space-y-4">
+                <div className="flex items-center justify-between border-b pb-2">
+                  <div className="flex items-center gap-2">
+                    <Eye className="w-5 h-5 text-muted-foreground" />
+                    <h3 className="font-semibold text-lg text-foreground">Acessibilidade</h3>
+                  </div>
+                </div>
+
+                <div className="grid gap-6">
+                  <div className="flex items-center justify-between space-x-2">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="high-contrast">Modo de Alto Contraste</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Aumenta o contraste das cores para melhorar a legibilidade.
+                      </p>
+                    </div>
+                    <Switch
+                      id="high-contrast"
+                      checked={highContrast}
+                      onCheckedChange={setHighContrast}
+                      aria-label="Ativar modo de alto contraste"
+                    />
+                  </div>
+                </div>
+              </section>
+
             </div>
           )}
 
@@ -377,7 +418,7 @@ export function ConfiguracoesModal({ open, onOpenChange }: Props) {
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleSave} disabled={isSaving || isLoading} className="bg-teal-600 hover:bg-teal-700">
+            <Button onClick={handleSave} disabled={isSaving || isLoading} className="bg-primary hover:bg-primary/90 text-primary-foreground">
               {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Salvar Alterações
             </Button>
