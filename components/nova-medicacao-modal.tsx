@@ -122,8 +122,8 @@ export function NovaMedicacaoModal({ open, onOpenChange, userId, onSuccess }: Pr
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
-            <div className="bg-blue-100 p-2 rounded-lg">
-              <Syringe className="w-5 h-5 text-blue-700" />
+            <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg">
+              <Syringe className="w-5 h-5 text-blue-700 dark:text-blue-400" />
             </div>
             Nova Medicação
           </DialogTitle>
@@ -131,7 +131,7 @@ export function NovaMedicacaoModal({ open, onOpenChange, userId, onSuccess }: Pr
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6 py-4">
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
             <div className="flex items-start gap-3">
               <input
                 type="checkbox"
@@ -141,10 +141,10 @@ export function NovaMedicacaoModal({ open, onOpenChange, userId, onSuccess }: Pr
                 className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
               <div className="flex-1">
-                <Label htmlFor="is_continuous" className="font-semibold text-amber-900 cursor-pointer">
+                <Label htmlFor="is_continuous" className="font-semibold text-amber-900 dark:text-amber-500 cursor-pointer">
                   Medicação de Uso Contínuo
                 </Label>
-                <p className="text-sm text-amber-700 mt-1">
+                <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
                   Marque esta opção para medicações que você usa diariamente com dosagem fixa (ex: Insulina Glargina
                   30u). Você poderá ajustar a dosagem quando necessário.
                 </p>
@@ -179,8 +179,8 @@ export function NovaMedicacaoModal({ open, onOpenChange, userId, onSuccess }: Pr
                       }
                     }}
                     className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-all ${medicationType === type.value
-                        ? "border-blue-500 bg-blue-50 text-blue-700"
-                        : "border-gray-200 hover:border-gray-300"
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border hover:border-primary/50 bg-card hover:bg-muted/50"
                       }`}
                   >
                     <Icon className="w-5 h-5" />

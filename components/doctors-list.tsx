@@ -118,7 +118,7 @@ export function DoctorsList({ userId }: Props) {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="relative w-full sm:w-64">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                         placeholder="Buscar médico ou especialidade..."
                         value={searchTerm}
@@ -132,12 +132,12 @@ export function DoctorsList({ userId }: Props) {
             </div>
 
             {loading ? (
-                <div className="text-center py-10 text-gray-500">Carregando médicos...</div>
+                <div className="text-center py-10 text-muted-foreground">Carregando médicos...</div>
             ) : filteredDoctors.length === 0 ? (
-                <div className="text-center py-16 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-                    <Stethoscope className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-                    <h3 className="text-lg font-medium text-gray-900">Nenhum médico encontrado</h3>
-                    <p className="text-gray-500 max-w-sm mx-auto mt-1">
+                <div className="text-center py-16 bg-muted/50 rounded-lg border border-dashed border-border">
+                    <Stethoscope className="w-12 h-12 mx-auto text-muted-foreground mb-3" />
+                    <h3 className="text-lg font-medium text-foreground">Nenhum médico encontrado</h3>
+                    <p className="text-muted-foreground max-w-sm mx-auto mt-1">
                         {searchTerm ? "Tente buscar com outros termos." : "Cadastre seus médicos para ter as informações sempre à mão."}
                     </p>
                     {!searchTerm && (
@@ -149,55 +149,55 @@ export function DoctorsList({ userId }: Props) {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredDoctors.map(doctor => (
-                        <div key={doctor.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
+                        <div key={doctor.id} className="bg-card rounded-xl shadow-sm border border-border overflow-hidden hover:shadow-md transition-shadow">
                             <div className="p-5">
                                 <div className="flex justify-between items-start mb-4">
                                     <div className="flex items-center gap-3">
-                                        <div className="bg-teal-50 p-2.5 rounded-full">
-                                            <Stethoscope className="w-5 h-5 text-teal-600" />
+                                        <div className="bg-teal-50 dark:bg-teal-900/30 p-2.5 rounded-full">
+                                            <Stethoscope className="w-5 h-5 text-teal-600 dark:text-teal-400" />
                                         </div>
                                         <div>
-                                            <h3 className="font-bold text-gray-900 line-clamp-1" title={doctor.name}>{doctor.name}</h3>
-                                            <p className="text-sm text-teal-600 font-medium">{doctor.specialty}</p>
+                                            <h3 className="font-bold text-foreground line-clamp-1" title={doctor.name}>{doctor.name}</h3>
+                                            <p className="text-sm text-teal-600 dark:text-teal-400 font-medium">{doctor.specialty}</p>
                                         </div>
                                     </div>
                                     <div className="flex gap-1">
                                         <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleEdit(doctor)}>
-                                            <Edit2 className="w-4 h-4 text-gray-400 hover:text-blue-600" />
+                                            <Edit2 className="w-4 h-4 text-muted-foreground hover:text-blue-600" />
                                         </Button>
                                         <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleDeleteClick(doctor)}>
-                                            <Trash2 className="w-4 h-4 text-gray-400 hover:text-red-600" />
+                                            <Trash2 className="w-4 h-4 text-muted-foreground hover:text-red-600" />
                                         </Button>
                                     </div>
                                 </div>
 
-                                <div className="space-y-3 text-sm text-gray-600">
+                                <div className="space-y-3 text-sm text-muted-foreground">
                                     {doctor.address && (
                                         <div className="flex items-start gap-2">
-                                            <MapPin className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                                            <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
                                             <span className="line-clamp-2">{doctor.address}</span>
                                         </div>
                                     )}
                                     {doctor.contact && (
                                         <div className="flex items-center gap-2">
-                                            <Phone className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                                            <Phone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                                             <span>{doctor.contact}</span>
                                         </div>
                                     )}
                                     {doctor.crm && (
                                         <div className="flex items-center gap-2">
-                                            <FileText className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                                            <FileText className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                                             <span>CRM: {doctor.crm}</span>
                                         </div>
                                     )}
                                 </div>
 
                                 {(doctor.last_appointment || doctor.next_appointment) && (
-                                    <div className="mt-4 pt-4 border-t border-gray-50 grid grid-cols-2 gap-2 text-xs">
+                                    <div className="mt-4 pt-4 border-t border-border grid grid-cols-2 gap-2 text-xs">
                                         {doctor.last_appointment && (
                                             <div>
-                                                <span className="text-gray-400 block mb-1">Última Consulta</span>
-                                                <div className="flex items-center gap-1.5 font-medium text-gray-700">
+                                                <span className="text-muted-foreground block mb-1">Última Consulta</span>
+                                                <div className="flex items-center gap-1.5 font-medium text-foreground">
                                                     <Calendar className="w-3.5 h-3.5" />
                                                     {format(new Date(doctor.last_appointment), "dd/MM/yyyy", { locale: ptBR })}
                                                 </div>
@@ -205,8 +205,8 @@ export function DoctorsList({ userId }: Props) {
                                         )}
                                         {doctor.next_appointment && (
                                             <div>
-                                                <span className="text-gray-400 block mb-1">Próxima Consulta</span>
-                                                <div className="flex items-center gap-1.5 font-medium text-teal-700">
+                                                <span className="text-muted-foreground block mb-1">Próxima Consulta</span>
+                                                <div className="flex items-center gap-1.5 font-medium text-teal-700 dark:text-teal-400">
                                                     <Calendar className="w-3.5 h-3.5" />
                                                     {format(new Date(doctor.next_appointment), "dd/MM/yyyy", { locale: ptBR })}
                                                 </div>

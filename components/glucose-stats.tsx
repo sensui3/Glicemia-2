@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { TrendingUp, TrendingDown, Activity, Percent, Info } from "lucide-react"
+import { TrendingUp, TrendingDown, Activity, Percent, Info, Target } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -31,6 +31,7 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
   const [highest, setHighest] = useState<any>(null)
   const [lowest, setLowest] = useState<any>(null)
   const [trend, setTrend] = useState(0)
+  const [timeInRange, setTimeInRange] = useState(0)
   const [hba1c, setHba1c] = useState<string | number>(0)
   const [hba1cHistory, setHba1cHistory] = useState<Hba1cPoint[]>([])
   const [loading, setLoading] = useState(true)
@@ -79,6 +80,12 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
         ? Math.round(sevenDayReadings.reduce((sum, r) => sum + r.reading_value, 0) / sevenDayReadings.length)
         : 0
     setAverage(avg)
+
+    // Calcular Time in Range (70-180 mg/dL)
+    const inRange = sevenDayReadings.filter(r => r.reading_value >= 70 && r.reading_value <= 180).length
+    const total = sevenDayReadings.length
+    const tir = total > 0 ? Math.round((inRange / total) * 100) : 0
+    setTimeInRange(tir)
 
     // Encontrar maior e menor leitura (nos últimos 7 dias)
     const high =
@@ -157,9 +164,9 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="bg-white rounded-xl p-6 shadow-sm animate-pulse">
-            <div className="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
-            <div className="h-10 bg-gray-200 rounded w-3/4"></div>
+          <div key={i} className="bg-card rounded-xl p-6 shadow-sm animate-pulse">
+            <div className="h-4 bg-muted rounded w-1/2 mb-4"></div>
+            <div className="h-10 bg-muted rounded w-3/4"></div>
           </div>
         ))}
       </div>
@@ -169,20 +176,20 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       {/* Média */}
-      <div className="bg-white rounded-xl p-6 shadow-sm">
+      <div className="bg-card rounded-xl p-6 shadow-sm border border-border">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-gray-600">MÉDIA (7 DIAS)</span>
-          <div className="bg-teal-100 p-2 rounded-lg">
-            <Activity className="w-4 h-4 text-teal-700" />
+          <span className="text-sm font-medium text-muted-foreground">MÉDIA (7 DIAS)</span>
+          <div className="bg-teal-100 dark:bg-teal-900/30 p-2 rounded-lg">
+            <Activity className="w-4 h-4 text-teal-700 dark:text-teal-400" />
           </div>
         </div>
         <div className="flex items-baseline gap-2">
           <span className="text-4xl font-bold">{average}</span>
-          <span className="text-lg text-gray-500">mg/dL</span>
+          <span className="text-lg text-muted-foreground">mg/dL</span>
         </div>
         {trend !== 0 && (
           <div
-            className={`flex items-center gap-1 mt-2 text-sm ${trend > 0 ? "text-red-600" : "text-green-600"}`}
+            className={`flex items-center gap-1 mt-2 text-sm ${trend > 0 ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}
           >
             {trend > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
             <span>{Math.abs(trend)}% vs semana anterior</span>
@@ -193,20 +200,20 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
       {/* HbA1c Estimada com Modal */}
       <Dialog>
         <DialogTrigger asChild>
-          <div className="bg-white rounded-xl p-6 shadow-sm cursor-pointer transition-all hover:shadow-md border border-transparent hover:border-purple-200 group">
+          <div className="bg-card rounded-xl p-6 shadow-sm cursor-pointer transition-all hover:shadow-md border border-border hover:border-purple-200 dark:hover:border-purple-800 group">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-600 group-hover:text-purple-700 transition-colors">
+              <span className="text-sm font-medium text-muted-foreground group-hover:text-purple-700 dark:group-hover:text-purple-400 transition-colors">
                 HbA1c ESTIMADA
               </span>
-              <div className="bg-purple-100 p-2 rounded-lg group-hover:bg-purple-200 transition-colors">
-                <Percent className="w-4 h-4 text-purple-700" />
+              <div className="bg-purple-100 dark:bg-purple-900/30 p-2 rounded-lg group-hover:bg-purple-200 dark:group-hover:bg-purple-800/50 transition-colors">
+                <Percent className="w-4 h-4 text-purple-700 dark:text-purple-400" />
               </div>
             </div>
             <div className="flex items-baseline gap-2">
               <span className="text-4xl font-bold">{hba1c}</span>
-              <span className="text-lg text-gray-500">%</span>
+              <span className="text-lg text-muted-foreground">%</span>
             </div>
-            <div className="flex items-center gap-1 mt-2 text-sm text-gray-500 group-hover:text-purple-600">
+            <div className="flex items-center gap-1 mt-2 text-sm text-muted-foreground group-hover:text-purple-600 dark:group-hover:text-purple-400">
               <Info className="w-3 h-3" />
               <span>Ver histórico</span>
             </div>
@@ -231,12 +238,13 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
                         <stop offset="95%" stopColor="#9333ea" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                     <XAxis
                       dataKey="formattedDate"
                       fontSize={12}
                       tickLine={false}
                       axisLine={false}
+                      stroke="hsl(var(--muted-foreground))"
                     />
                     <YAxis
                       domain={['dataMin - 0.5', 'dataMax + 0.5']}
@@ -244,11 +252,13 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
                       tickLine={false}
                       axisLine={false}
                       tickFormatter={(value) => `${value}%`}
+                      stroke="hsl(var(--muted-foreground))"
                     />
                     <Tooltip
-                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      contentStyle={{ borderRadius: '8px', border: '1px solid hsl(var(--border))', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', backgroundColor: 'hsl(var(--popover))', color: 'hsl(var(--popover-foreground))' }}
                       formatter={(value: number) => [`${value}%`, "HbA1c"]}
                       labelFormatter={(label) => `Semana de ${label}`}
+                      cursor={{ stroke: 'hsl(var(--muted-foreground))', strokeOpacity: 0.2 }}
                     />
                     <Area
                       type="monotone"
@@ -261,12 +271,12 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
                   </AreaChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-full text-gray-500">
+                <div className="flex items-center justify-center h-full text-muted-foreground">
                   Dados insuficientes para gerar histórico
                 </div>
               )}
             </div>
-            <div className="mt-4 text-sm text-gray-500 bg-gray-50 p-4 rounded-lg">
+            <div className="mt-4 text-sm text-muted-foreground bg-muted p-4 rounded-lg">
               <p className="font-semibold mb-1">Sobre este cálculo:</p>
               <p>
                 A HbA1c estimada é calculada com base na média das suas leituras de glicose.
@@ -279,38 +289,59 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
       </Dialog>
 
       {/* Maior Leitura */}
-      <div className="bg-white rounded-xl p-6 shadow-sm">
+      <div className="bg-card rounded-xl p-6 shadow-sm border border-border">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-gray-600">MAIOR (7 DIAS)</span>
-          <div className="bg-red-100 p-2 rounded-lg">
-            <TrendingUp className="w-4 h-4 text-red-700" />
+          <span className="text-sm font-medium text-muted-foreground">MAIOR (7 DIAS)</span>
+          <div className="bg-red-100 dark:bg-red-900/30 p-2 rounded-lg">
+            <TrendingUp className="w-4 h-4 text-red-700 dark:text-red-400" />
           </div>
         </div>
         <div className="flex items-baseline gap-2">
           <span className="text-4xl font-bold">{highest?.reading_value || 0}</span>
-          <span className="text-lg text-gray-500">mg/dL</span>
+          <span className="text-lg text-muted-foreground">mg/dL</span>
         </div>
         {highest && (
-          <p className="text-sm text-gray-500 mt-2">
+          <p className="text-sm text-muted-foreground mt-2">
             Registrado {highest.reading_time ? `às ${highest.reading_time.slice(0, 5)}` : "hoje"}
           </p>
         )}
       </div>
 
-      {/* Menor Leitura */}
-      <div className="bg-white rounded-xl p-6 shadow-sm">
+      {/* Meta Semanal (Time In Range) */}
+      <div className="bg-card rounded-xl p-6 shadow-sm border border-border">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-gray-600">MENOR (7 DIAS)</span>
-          <div className="bg-yellow-100 p-2 rounded-lg">
-            <TrendingDown className="w-4 h-4 text-yellow-700" />
+          <span className="text-sm font-medium text-muted-foreground">META SEMANAL</span>
+          <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg">
+            <Target className="w-4 h-4 text-blue-700 dark:text-blue-400" />
+          </div>
+        </div>
+        <div className="flex items-baseline gap-2">
+          <span className="text-4xl font-bold">{timeInRange}%</span>
+          <span className="text-lg text-muted-foreground">no alvo</span>
+        </div>
+        <div className="w-full bg-muted rounded-full h-2.5 mt-2">
+          <div
+            className={`h-2.5 rounded-full ${timeInRange >= 70 ? 'bg-green-600 dark:bg-green-500' : timeInRange >= 50 ? 'bg-yellow-500 dark:bg-yellow-500' : 'bg-red-500 dark:bg-red-500'}`}
+            style={{ width: `${timeInRange}%` }}
+          ></div>
+        </div>
+        <p className="text-xs text-muted-foreground mt-2">Alvo: &gt;70% (70-180 mg/dL)</p>
+      </div>
+
+      {/* Menor Leitura */}
+      <div className="bg-card rounded-xl p-6 shadow-sm border border-border">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium text-muted-foreground">MENOR (7 DIAS)</span>
+          <div className="bg-yellow-100 dark:bg-yellow-900/30 p-2 rounded-lg">
+            <TrendingDown className="w-4 h-4 text-yellow-700 dark:text-yellow-400" />
           </div>
         </div>
         <div className="flex items-baseline gap-2">
           <span className="text-4xl font-bold">{lowest?.reading_value || 0}</span>
-          <span className="text-lg text-gray-500">mg/dL</span>
+          <span className="text-lg text-muted-foreground">mg/dL</span>
         </div>
         {lowest && (
-          <p className="text-sm text-gray-500 mt-2">
+          <p className="text-sm text-muted-foreground mt-2">
             Registrado {lowest.reading_time ? lowest.reading_time.slice(0, 5) : "--:--"}
           </p>
         )}

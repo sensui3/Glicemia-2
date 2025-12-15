@@ -153,29 +153,29 @@ export function MedicalCalendar({ userId }: Props) {
 
     const getEventTypeColor = (type: string) => {
         switch (type) {
-            case "consulta": return "bg-blue-100 text-blue-700 border-blue-200"
-            case "exame": return "bg-purple-100 text-purple-700 border-purple-200"
-            case "vacina": return "bg-emerald-100 text-emerald-700 border-emerald-200"
-            default: return "bg-gray-100 text-gray-700 border-gray-200"
+            case "consulta": return "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800"
+            case "exame": return "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800"
+            case "vacina": return "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800"
+            default: return "bg-muted text-muted-foreground border-border"
         }
     }
 
     return (
-        <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex items-center gap-2 mb-6 border-b border-gray-100 pb-4">
-                <div className="bg-indigo-100 p-2 rounded-lg">
+        <div className="bg-card rounded-xl shadow-sm p-6 border border-border">
+            <div className="flex items-center gap-2 mb-6 border-b border-border pb-4">
+                <div className="bg-indigo-100 dark:bg-indigo-900/30 p-2 rounded-lg">
                     <CalendarIcon className="w-5 h-5 text-indigo-600" />
                 </div>
                 <div>
-                    <h3 className="text-lg font-bold text-gray-900">Calendário Médico</h3>
-                    <p className="text-sm text-gray-500">Gerencie suas consultas e exames</p>
+                    <h3 className="text-lg font-bold text-foreground">Calendário Médico</h3>
+                    <p className="text-sm text-muted-foreground">Gerencie suas consultas e exames</p>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-8 items-start">
                 {/* Left Column: Calendar */}
                 <div className="flex justify-center lg:justify-start">
-                    <div className="p-4 border border-gray-100 rounded-xl bg-white shadow-sm">
+                    <div className="p-4 border border-border rounded-xl bg-card shadow-sm">
                         <Calendar
                             mode="single"
                             selected={date}
@@ -190,7 +190,7 @@ export function MedicalCalendar({ userId }: Props) {
                 <div className="space-y-6">
                     {/* Header for Selected Date */}
                     <div className="flex items-center justify-between">
-                        <h4 className="text-xl font-semibold text-gray-800 capitalize">
+                        <h4 className="text-xl font-semibold text-foreground capitalize">
                             {date ? format(date, "EEEE, dd 'de' MMMM", { locale: ptBR }) : "Selecione uma data"}
                         </h4>
                         <Badge variant="secondary" className="px-3 py-1">
@@ -199,8 +199,8 @@ export function MedicalCalendar({ userId }: Props) {
                     </div>
 
                     {/* Add Event Form - Compact */}
-                    <div className="bg-gray-50 p-5 rounded-xl border border-gray-100 transition-all hover:border-gray-200">
-                        <h5 className="text-sm font-medium mb-3 text-gray-700 flex items-center gap-2">
+                    <div className="bg-muted p-5 rounded-xl border border-border transition-all hover:border-input">
+                        <h5 className="text-sm font-medium mb-3 text-muted-foreground flex items-center gap-2">
                             <Plus className="w-4 h-4" /> Novo Agendamento
                         </h5>
                         <div className="space-y-3">
@@ -208,7 +208,7 @@ export function MedicalCalendar({ userId }: Props) {
                                 value={newEventTitle}
                                 onChange={(e) => setNewEventTitle(e.target.value)}
                                 placeholder="Título (ex: Consulta Cardiologista)"
-                                className="bg-white"
+                                className="bg-background"
                             />
                             <div className="flex gap-3">
                                 <div className="w-32">
@@ -216,13 +216,13 @@ export function MedicalCalendar({ userId }: Props) {
                                         type="time"
                                         value={newEventTime}
                                         onChange={(e) => setNewEventTime(e.target.value)}
-                                        className="bg-white"
+                                        className="bg-background"
                                     />
                                 </div>
                                 <div className="flex-1">
                                     {isMounted ? (
                                         <Select value={newEventType} onValueChange={(v: any) => setNewEventType(v)}>
-                                            <SelectTrigger className="bg-white">
+                                            <SelectTrigger className="bg-background">
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -233,7 +233,7 @@ export function MedicalCalendar({ userId }: Props) {
                                             </SelectContent>
                                         </Select>
                                     ) : (
-                                        <div className="h-9 w-full bg-white border border-input rounded-md" />
+                                        <div className="h-9 w-full bg-background border border-input rounded-md" />
                                     )}
                                 </div>
                                 <Button onClick={handleAddEvent} className="bg-indigo-600 hover:bg-indigo-700">
@@ -246,27 +246,27 @@ export function MedicalCalendar({ userId }: Props) {
                     {/* Events List */}
                     <div className="space-y-3">
                         {selectedDateEvents.length === 0 ? (
-                            <div className="text-center py-8 border-2 border-dashed border-gray-100 rounded-xl">
-                                <p className="text-gray-400 text-sm">Nenhum evento agendado para este dia.</p>
+                            <div className="text-center py-8 border-2 border-dashed border-border rounded-xl">
+                                <p className="text-muted-foreground text-sm">Nenhum evento agendado para este dia.</p>
                             </div>
                         ) : (
                             selectedDateEvents.map(event => (
                                 <div
                                     key={event.id}
-                                    className="group flex items-center justify-between p-4 border border-gray-100 rounded-xl bg-white hover:shadow-md transition-all hover:border-indigo-100"
+                                    className="group flex items-center justify-between p-4 border border-border rounded-xl bg-card hover:shadow-md transition-all hover:border-indigo-100 dark:hover:border-indigo-900"
                                 >
                                     <div className="flex gap-4 items-center">
                                         <div className={`p-2 rounded-lg border ${getEventTypeColor(event.type)} bg-opacity-10 border-opacity-20`}>
                                             <Clock className="w-5 h-5 opacity-80" />
                                         </div>
                                         <div>
-                                            <div className="font-semibold text-gray-900 flex items-center gap-2">
+                                            <div className="font-semibold text-foreground flex items-center gap-2">
                                                 {event.title}
                                                 <Badge variant="outline" className={`text-xs border-0 ${getEventTypeColor(event.type)}`}>
                                                     {event.type}
                                                 </Badge>
                                             </div>
-                                            <div className="text-sm text-gray-500 mt-0.5 font-medium">
+                                            <div className="text-sm text-muted-foreground mt-0.5 font-medium">
                                                 {event.time}
                                             </div>
                                         </div>
@@ -275,7 +275,7 @@ export function MedicalCalendar({ userId }: Props) {
                                         variant="ghost"
                                         size="icon"
                                         onClick={() => handleDeleteEvent(event.id)}
-                                        className="text-gray-400 hover:text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        className="text-muted-foreground hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-opacity"
                                         aria-label={`Excluir evento ${event.title}`}
                                     >
                                         <Trash2 className="w-4 h-4" />

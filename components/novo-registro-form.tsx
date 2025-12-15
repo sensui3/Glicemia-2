@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { X, Calendar, Clock, Droplet, Coffee, Utensils, Moon, MoreHorizontal, Save, Info } from "lucide-react"
+import { X, Calendar, Clock, Droplet, Coffee, Utensils, Moon, MoreHorizontal, Save, Info, Activity } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useToast } from "@/components/ui/use-toast"
@@ -40,6 +40,8 @@ export function NovoRegistroForm({ userId }: Props) {
   const [time, setTime] = useState(localTime)
   const [condition, setCondition] = useState<string>("jejum")
   const [value, setValue] = useState<string>("")
+  const [carbs, setCarbs] = useState<string>("")
+  const [calories, setCalories] = useState<string>("")
   const [observations, setObservations] = useState("")
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -77,6 +79,8 @@ export function NovoRegistroForm({ userId }: Props) {
         reading_date: date,
         reading_time: time,
         condition,
+        carbs: carbs ? Number.parseInt(carbs) : null,
+        calories: calories ? Number.parseInt(calories) : null,
         observations: observations || null,
       })
 
@@ -92,15 +96,15 @@ export function NovoRegistroForm({ userId }: Props) {
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm p-6">
+    <div className="bg-card rounded-2xl shadow-sm p-6 border border-border">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="bg-blue-100 p-3 rounded-xl">
-            <Droplet className="w-6 h-6 text-blue-600" />
+          <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-xl">
+            <Droplet className="w-6 h-6 text-blue-600 dark:text-blue-400" />
           </div>
           <div>
             <h1 className="text-2xl font-bold">Novo Registro</h1>
-            <p className="text-sm text-gray-500">Adicione uma nova leitura de glicemia</p>
+            <p className="text-sm text-muted-foreground">Adicione uma nova leitura de glicemia</p>
           </div>
         </div>
         <Link href="/dashboard">
@@ -156,7 +160,7 @@ export function NovoRegistroForm({ userId }: Props) {
                   onClick={() => setCondition(cond.value)}
                   aria-pressed={condition === cond.value}
                   aria-label={`Selecionar condição: ${cond.label}`}
-                  className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all ${condition === cond.value ? "border-blue-500 bg-blue-50" : "border-gray-200 hover:border-gray-300"
+                  className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all ${condition === cond.value ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-border hover:border-blue-200 dark:hover:border-blue-800"
                     }`}
                 >
                   <Icon className="w-6 h-6" />
@@ -169,12 +173,12 @@ export function NovoRegistroForm({ userId }: Props) {
 
         {/* Resultado da Glicemia */}
         <div className="space-y-2">
-          <Label htmlFor="value" className="text-base font-semibold uppercase text-gray-600 flex items-center gap-2">
+          <Label htmlFor="value" className="text-base font-semibold uppercase text-muted-foreground flex items-center gap-2">
             Resultado da Glicemia
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Info className="w-4 h-4 text-gray-400 cursor-pointer" />
+                  <Info className="w-4 h-4 text-muted-foreground cursor-pointer" />
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>Insira o valor exato mostrado no seu glicosímetro.</p>
@@ -182,7 +186,7 @@ export function NovoRegistroForm({ userId }: Props) {
               </Tooltip>
             </TooltipProvider>
           </Label>
-          <div className="bg-gray-50 rounded-xl p-8">
+          <div className="bg-muted rounded-xl p-8">
             <div className="flex items-center justify-center gap-4">
               <Input
                 id="value"
@@ -192,13 +196,43 @@ export function NovoRegistroForm({ userId }: Props) {
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
                 placeholder="000"
-                className="text-6xl font-bold text-center w-48 h-24 text-gray-400 bg-white"
+                className="text-6xl font-bold text-center w-48 h-24 text-muted-foreground bg-card border-border"
                 required
                 aria-describedby="glucose-helper-text"
               />
-              <span className="text-2xl font-medium text-gray-500">mg/dL</span>
+              <span className="text-2xl font-medium text-muted-foreground">mg/dL</span>
             </div>
-            <p id="glucose-helper-text" className="text-center text-sm text-gray-500 mt-4">Valores normais de jejum: 70-99 mg/dL</p>
+            <p id="glucose-helper-text" className="text-center text-sm text-muted-foreground mt-4">Valores normais de jejum: 70-99 mg/dL</p>
+          </div>
+        </div>
+
+        {/* Nutrition Info */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="carbs" className="flex items-center gap-2">
+              <Utensils className="w-4 h-4" />
+              Carboidratos (g)
+            </Label>
+            <Input
+              id="carbs"
+              type="number"
+              placeholder="Ex: 45"
+              value={carbs}
+              onChange={(e) => setCarbs(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="calories" className="flex items-center gap-2">
+              <Activity className="w-4 h-4" />
+              Calorias (kcal)
+            </Label>
+            <Input
+              id="calories"
+              type="number"
+              placeholder="Ex: 350"
+              value={calories}
+              onChange={(e) => setCalories(e.target.value)}
+            />
           </div>
         </div>
 
@@ -214,7 +248,7 @@ export function NovoRegistroForm({ userId }: Props) {
           />
         </div>
 
-        {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm">{error}</div>}
+        {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm">{error}</div>}
 
         {/* Ações */}
         <div className="flex gap-3">

@@ -32,12 +32,12 @@ export function SidebarNav() {
   return (
     <aside
       className={cn(
-        "hidden lg:flex bg-white border-r border-gray-200 transition-all duration-300 flex-col h-full",
+        "hidden lg:flex bg-card border-r border-border transition-all duration-300 flex-col h-full",
         isCollapsed ? "w-16" : "w-64",
       )}
     >
       {/* Logo */}
-      <div className="h-16 border-b border-gray-200 flex items-center justify-between px-4">
+      <div className="h-16 border-b border-border flex items-center justify-between px-4">
         {!isCollapsed && (
           <div className="flex items-center gap-2">
             <div className="bg-teal-600 rounded-lg p-1.5">
@@ -63,8 +63,8 @@ export function SidebarNav() {
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors",
                   isActive
-                    ? "bg-teal-50 text-teal-700 font-medium"
-                    : "text-gray-700 hover:bg-gray-100 hover:text-gray-900",
+                    ? "bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400 font-medium"
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground",
                 )}
               >
                 <Icon className="h-5 w-5 flex-shrink-0" />

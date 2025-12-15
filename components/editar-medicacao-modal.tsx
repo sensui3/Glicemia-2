@@ -76,8 +76,8 @@ export function EditarMedicacaoModal({ open, onOpenChange, medication, onSuccess
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
-            <div className="bg-blue-100 p-2 rounded-lg">
-              <Syringe className="w-5 h-5 text-blue-700" />
+            <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg">
+              <Syringe className="w-5 h-5 text-blue-700 dark:text-blue-400" />
             </div>
             Editar Medicação
           </DialogTitle>
@@ -87,7 +87,7 @@ export function EditarMedicacaoModal({ open, onOpenChange, medication, onSuccess
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
-          <div className="bg-gray-50 p-4 rounded-lg space-y-2 text-sm">
+          <div className="bg-muted/50 p-4 rounded-lg space-y-2 text-sm text-foreground">
             <div>
               <span className="font-medium">Nome:</span> {medication.medication_name}
             </div>
@@ -108,7 +108,7 @@ export function EditarMedicacaoModal({ open, onOpenChange, medication, onSuccess
                 required
                 className="flex-1"
               />
-              <div className="flex items-center px-3 bg-gray-100 rounded-md text-sm font-medium">
+              <div className="flex items-center px-3 bg-muted rounded-md text-sm font-medium text-muted-foreground">
                 {medication.dosage_unit}
               </div>
             </div>

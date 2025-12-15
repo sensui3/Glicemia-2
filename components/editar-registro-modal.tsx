@@ -115,12 +115,12 @@ export function EditarRegistroModal({ open, onOpenChange, reading, onDataChange 
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <div className="bg-blue-100 rounded-full p-2">
-              <Droplet className="w-6 h-6 text-blue-600" />
+            <div className="bg-blue-100 dark:bg-blue-900/40 rounded-full p-2">
+              <Droplet className="w-6 h-6 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
               <DialogTitle className="text-xl">Editar Registro</DialogTitle>
-              <p className="text-sm text-gray-500">Atualize as informações do registro</p>
+              <p className="text-sm text-muted-foreground">Atualize as informações do registro</p>
             </div>
           </div>
         </DialogHeader>
@@ -149,11 +149,10 @@ export function EditarRegistroModal({ open, onOpenChange, reading, onDataChange 
                     key={condition.id}
                     type="button"
                     onClick={() => setSelectedCondition(condition.id)}
-                    className={`flex flex-col items-center justify-center gap-2 p-4 rounded-lg border-2 transition-all ${
-                      selectedCondition === condition.id
-                        ? "border-blue-500 bg-blue-50"
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
+                    className={`flex flex-col items-center justify-center gap-2 p-4 rounded-lg border-2 transition-all ${selectedCondition === condition.id
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border hover:border-primary/50 bg-card hover:bg-muted/50"
+                      }`}
                   >
                     <Icon className="w-6 h-6" />
                     <span className="text-xs font-medium">{condition.label}</span>
@@ -162,8 +161,8 @@ export function EditarRegistroModal({ open, onOpenChange, reading, onDataChange 
               })}
             </div>
             {detectedMeal && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2">
-                <p className="text-sm text-blue-800">
+              <div className="bg-blue-50/50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mt-2">
+                <p className="text-sm text-blue-800 dark:text-blue-300">
                   <span className="font-medium">Refeição detectada:</span> {detectedMeal}
                 </p>
               </div>
@@ -171,8 +170,8 @@ export function EditarRegistroModal({ open, onOpenChange, reading, onDataChange 
           </div>
 
           {/* Resultado da Glicemia */}
-          <div className="bg-gray-50 rounded-lg p-6">
-            <Label className="text-sm text-gray-600 mb-4 block">RESULTADO DA GLICEMIA</Label>
+          <div className="bg-muted/50 rounded-lg p-6">
+            <Label className="text-sm text-muted-foreground mb-4 block">RESULTADO DA GLICEMIA</Label>
             <div className="flex items-end gap-2 mb-2">
               <Input
                 type="number"
@@ -182,11 +181,11 @@ export function EditarRegistroModal({ open, onOpenChange, reading, onDataChange 
                 required
                 min="0"
                 max="999"
-                className="text-5xl font-bold h-20 text-center bg-white"
+                className="text-5xl font-bold h-20 text-center bg-background"
               />
-              <span className="text-2xl font-medium text-gray-600 mb-4">mg/dL</span>
+              <span className="text-2xl font-medium text-muted-foreground mb-4">mg/dL</span>
             </div>
-            <p className="text-xs text-gray-500 text-center">Valores normais de jejum: 70-99 mg/dL</p>
+            <p className="text-xs text-muted-foreground text-center">Valores normais de jejum: 70-99 mg/dL</p>
           </div>
 
           {/* Observações */}

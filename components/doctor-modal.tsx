@@ -124,8 +124,8 @@ export function DoctorModal({ open, onOpenChange, userId, onSuccess, doctorToEdi
             <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-xl">
-                        <div className="bg-teal-100 p-2 rounded-lg">
-                            <Stethoscope className="w-5 h-5 text-teal-700" />
+                        <div className="bg-teal-100 dark:bg-teal-900/40 p-2 rounded-lg">
+                            <Stethoscope className="w-5 h-5 text-teal-700 dark:text-teal-300" />
                         </div>
                         {doctorToEdit ? "Editar Médico" : "Novo Médico"}
                     </DialogTitle>
@@ -137,7 +137,7 @@ export function DoctorModal({ open, onOpenChange, userId, onSuccess, doctorToEdi
                 <form onSubmit={handleSubmit} className="space-y-4 py-4">
                     <div>
                         <Label htmlFor="name" className="flex items-center gap-2">
-                            <UserRound className="w-4 h-4 text-gray-500" /> Nome do Médico
+                            <UserRound className="w-4 h-4 text-muted-foreground" /> Nome do Médico
                         </Label>
                         <Input
                             id="name"
@@ -151,7 +151,7 @@ export function DoctorModal({ open, onOpenChange, userId, onSuccess, doctorToEdi
 
                     <div>
                         <Label htmlFor="specialty" className="flex items-center gap-2">
-                            <Stethoscope className="w-4 h-4 text-gray-500" /> Especialidade
+                            <Stethoscope className="w-4 h-4 text-muted-foreground" /> Especialidade
                         </Label>
                         <select
                             id="specialty"
@@ -184,7 +184,7 @@ export function DoctorModal({ open, onOpenChange, userId, onSuccess, doctorToEdi
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <Label htmlFor="crm" className="flex items-center gap-2">
-                                <FileText className="w-4 h-4 text-gray-500" /> CRM
+                                <FileText className="w-4 h-4 text-muted-foreground" /> CRM
                             </Label>
                             <Input
                                 id="crm"
@@ -196,7 +196,7 @@ export function DoctorModal({ open, onOpenChange, userId, onSuccess, doctorToEdi
                         </div>
                         <div>
                             <Label htmlFor="contact" className="flex items-center gap-2">
-                                <Phone className="w-4 h-4 text-gray-500" /> Contato
+                                <Phone className="w-4 h-4 text-muted-foreground" /> Contato
                             </Label>
                             <Input
                                 id="contact"
@@ -210,7 +210,7 @@ export function DoctorModal({ open, onOpenChange, userId, onSuccess, doctorToEdi
 
                     <div>
                         <Label htmlFor="address" className="flex items-center gap-2">
-                            <MapPin className="w-4 h-4 text-gray-500" /> Local de Atendimento
+                            <MapPin className="w-4 h-4 text-muted-foreground" /> Local de Atendimento
                         </Label>
                         <Input
                             id="address"
@@ -224,7 +224,7 @@ export function DoctorModal({ open, onOpenChange, userId, onSuccess, doctorToEdi
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <Label htmlFor="lastAppointment" className="flex items-center gap-2">
-                                <Calendar className="w-4 h-4 text-gray-500" /> Última Consulta
+                                <Calendar className="w-4 h-4 text-muted-foreground" /> Última Consulta
                             </Label>
                             <Input
                                 id="lastAppointment"
@@ -236,7 +236,7 @@ export function DoctorModal({ open, onOpenChange, userId, onSuccess, doctorToEdi
                         </div>
                         <div>
                             <Label htmlFor="nextAppointment" className="flex items-center gap-2">
-                                <Calendar className="w-4 h-4 text-gray-500" /> Próxima Consulta
+                                <Calendar className="w-4 h-4 text-muted-foreground" /> Próxima Consulta
                             </Label>
                             <Input
                                 id="nextAppointment"

@@ -1028,9 +1028,9 @@ export function ExportarDadosModal({ open, onOpenChange, userId, sortOrder = "de
 
           {/* Resumo do Período */}
           {startDate && endDate && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 md:p-4">
-              <p className="text-sm font-medium text-blue-900 mb-1">Resumo da Exportação</p>
-              <p className="text-xs md:text-sm text-blue-700">
+            <div className="bg-blue-50/50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 md:p-4">
+              <p className="text-sm font-medium text-blue-900 dark:text-blue-300 mb-1">Resumo da Exportação</p>
+              <p className="text-xs md:text-sm text-blue-700 dark:text-blue-400">
                 Período Selecionado: <strong>{format(startDate, "dd 'de' MMMM", { locale: ptBR })}</strong> -{" "}
                 <strong>{format(endDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}</strong>
                 <span className="block mt-1">
@@ -1040,7 +1040,7 @@ export function ExportarDadosModal({ open, onOpenChange, userId, sortOrder = "de
             </div>
           )}
 
-          <div className="flex items-center space-x-2 p-3 bg-teal-50 border border-teal-200 rounded-lg">
+          <div className="flex items-center space-x-2 p-3 bg-teal-50/50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 rounded-lg">
             <Checkbox
               id="include-medications"
               checked={includeMedications}
@@ -1063,8 +1063,8 @@ export function ExportarDadosModal({ open, onOpenChange, userId, sortOrder = "de
                 className={cn(
                   "flex flex-col items-center justify-center p-3 md:p-4 border-2 rounded-lg transition-all",
                   exportModel === "standard"
-                    ? "border-teal-600 bg-teal-50"
-                    : "border-gray-200 hover:border-gray-300 bg-white",
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border hover:border-primary/50 bg-card hover:bg-muted/50",
                 )}
               >
                 <div className="flex flex-col gap-1 items-center">
@@ -1079,7 +1079,7 @@ export function ExportarDadosModal({ open, onOpenChange, userId, sortOrder = "de
                   </div>
                 </div>
                 <span className="font-medium text-xs md:text-sm mt-2">Modelo Padrão</span>
-                <span className="text-[10px] md:text-xs text-gray-500 mt-1">Lista detalhada</span>
+                <span className="text-[10px] md:text-xs text-muted-foreground mt-1">Lista detalhada</span>
               </button>
 
               <button
@@ -1087,8 +1087,8 @@ export function ExportarDadosModal({ open, onOpenChange, userId, sortOrder = "de
                 className={cn(
                   "flex flex-col items-center justify-center p-3 md:p-4 border-2 rounded-lg transition-all",
                   exportModel === "medical"
-                    ? "border-teal-600 bg-teal-50"
-                    : "border-gray-200 hover:border-gray-300 bg-white",
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border hover:border-primary/50 bg-card hover:bg-muted/50",
                 )}
               >
                 <div className="grid grid-cols-2 gap-1 w-6">
@@ -1098,7 +1098,7 @@ export function ExportarDadosModal({ open, onOpenChange, userId, sortOrder = "de
                   <div className="h-2 w-full bg-current rounded-sm"></div>
                 </div>
                 <span className="font-medium text-xs md:text-sm mt-2">Modelo Médico</span>
-                <span className="text-[10px] md:text-xs text-gray-500 mt-1">Visão diária</span>
+                <span className="text-[10px] md:text-xs text-muted-foreground mt-1">Visão diária</span>
               </button>
             </div>
           </div>
@@ -1112,15 +1112,15 @@ export function ExportarDadosModal({ open, onOpenChange, userId, sortOrder = "de
                 className={cn(
                   "flex flex-col items-center justify-center p-3 md:p-4 border-2 rounded-lg transition-all",
                   formatType === "pdf"
-                    ? "border-teal-600 bg-teal-50"
-                    : "border-gray-200 hover:border-gray-300 bg-white",
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border hover:border-primary/50 bg-card hover:bg-muted/50",
                 )}
               >
                 <FileText
-                  className={cn("w-6 h-6 md:w-8 md:h-8 mb-2", formatType === "pdf" ? "text-teal-600" : "text-gray-400")}
+                  className={cn("w-6 h-6 md:w-8 md:h-8 mb-2", formatType === "pdf" ? "text-primary" : "text-muted-foreground")}
                 />
                 <span className="font-medium text-xs md:text-sm">PDF (Relatório)</span>
-                <span className="text-[10px] md:text-xs text-gray-500 mt-1">Com gráfico incluso</span>
+                <span className="text-[10px] md:text-xs text-muted-foreground mt-1">Com gráfico incluso</span>
               </button>
 
               <button
@@ -1128,15 +1128,15 @@ export function ExportarDadosModal({ open, onOpenChange, userId, sortOrder = "de
                 className={cn(
                   "flex flex-col items-center justify-center p-3 md:p-4 border-2 rounded-lg transition-all",
                   formatType === "csv"
-                    ? "border-teal-600 bg-teal-50"
-                    : "border-gray-200 hover:border-gray-300 bg-white",
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border hover:border-primary/50 bg-card hover:bg-muted/50",
                 )}
               >
                 <Sheet
-                  className={cn("w-6 h-6 md:w-8 md:h-8 mb-2", formatType === "csv" ? "text-teal-600" : "text-gray-400")}
+                  className={cn("w-6 h-6 md:w-8 md:h-8 mb-2", formatType === "csv" ? "text-primary" : "text-muted-foreground")}
                 />
                 <span className="font-medium text-xs md:text-sm">CSV (Excel)</span>
-                <span className="text-[10px] md:text-xs text-gray-500 mt-1">Dados brutos</span>
+                <span className="text-[10px] md:text-xs text-muted-foreground mt-1">Dados brutos</span>
               </button>
             </div>
           </div>

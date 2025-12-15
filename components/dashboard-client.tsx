@@ -22,7 +22,7 @@ export function DashboardClient({ userId, onDataChange, sortOrder }: Props) {
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <Button
           variant="outline"
-          className="flex-1 bg-transparent border-teal-600 text-teal-700 hover:bg-teal-50"
+          className="flex-1 bg-transparent border-teal-600 text-teal-700 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20"
           onClick={() => setIsExportarOpen(true)}
         >
           <Download className="w-4 h-4 mr-2" />

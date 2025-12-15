@@ -6,6 +6,8 @@ export type GlucoseReading = {
   reading_time: string
   condition: "jejum" | "antes_refeicao" | "apos_refeicao" | "ao_dormir" | "outro"
   observations: string | null
+  carbs?: number | null
+  calories?: number | null
   created_at: string
   updated_at: string
 }

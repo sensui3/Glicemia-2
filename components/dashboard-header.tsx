@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { LogoutButton } from "@/components/logout-button"
 import { ConfiguracoesModal } from "@/components/configuracoes-modal"
 import { MobileMenu } from "@/components/mobile-menu"
+import { ModeToggle } from "@/components/mode-toggle"
 
 export function DashboardHeader() {
   const [isConfigOpen, setIsConfigOpen] = useState(false)
@@ -27,6 +28,7 @@ export function DashboardHeader() {
               <Button variant="ghost" size="icon" onClick={() => setIsConfigOpen(true)} aria-label="Configurações">
                 <Settings className="w-5 h-5" />
               </Button>
+              <ModeToggle />
               <div className="hidden lg:block">
                 <LogoutButton />
               </div>

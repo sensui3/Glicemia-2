@@ -100,7 +100,7 @@ export function MedicacoesContent({ userId }: Props) {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold mb-2">Medicações</h1>
-          <p className="text-gray-600">Gerencie suas insulinas e outros medicamentos.</p>
+          <p className="text-muted-foreground">Gerencie suas insulinas e outros medicamentos.</p>
         </div>
         <Button onClick={() => setIsModalOpen(true)} className="bg-blue-600 hover:bg-blue-700">
           <Plus className="w-4 h-4 mr-2" />
@@ -118,9 +118,8 @@ export function MedicacoesContent({ userId }: Props) {
             {continuousMeds.map((med) => (
               <div
                 key={med.id}
-                className={`bg-white rounded-lg border-2 p-4 transition-all ${
-                  med.is_active ? "border-amber-200 bg-amber-50" : "border-gray-200 bg-gray-50 opacity-60"
-                }`}
+                className={`bg-card rounded-lg border-2 p-4 transition-all ${med.is_active ? "border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900" : "border-border bg-muted opacity-60"
+                  }`}
               >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
@@ -129,28 +128,28 @@ export function MedicacoesContent({ userId }: Props) {
                       {med.is_active ? (
                         <CheckCircle className="w-4 h-4 text-green-600" />
                       ) : (
-                        <XCircle className="w-4 h-4 text-gray-400" />
+                        <XCircle className="w-4 h-4 text-muted-foreground" />
                       )}
                     </div>
-                    <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                    <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
                       {getMedicationTypeLabel(med.medication_type)}
                     </span>
                   </div>
                 </div>
                 <div className="space-y-2 text-sm mb-4">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Dosagem Padrão:</span>
+                    <span className="text-muted-foreground">Dosagem Padrão:</span>
                     <span className="font-semibold">
                       {med.continuous_dosage} {med.continuous_dosage_unit}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Horário Habitual:</span>
+                    <span className="text-muted-foreground">Horário Habitual:</span>
                     <span className="font-semibold">{med.administration_time.slice(0, 5)}</span>
                   </div>
                   {med.notes && (
                     <div className="pt-2 border-t">
-                      <p className="text-gray-600 text-xs">{med.notes}</p>
+                      <p className="text-muted-foreground text-xs">{med.notes}</p>
                     </div>
                   )}
                 </div>
@@ -174,36 +173,36 @@ export function MedicacoesContent({ userId }: Props) {
       {/* Medications List */}
       <div>
         <h2 className="text-xl font-semibold mb-4">Histórico de Medicações</h2>
-        <div className="bg-white rounded-xl shadow-sm">
+        <div className="bg-card rounded-xl shadow-sm border border-border">
           {loading ? (
-            <div className="p-8 text-center text-gray-500">Carregando...</div>
+            <div className="p-8 text-center text-muted-foreground">Carregando...</div>
           ) : medications.length === 0 && continuousMeds.length === 0 ? (
             <div className="p-12 text-center">
-              <div className="bg-gray-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-                <Pill className="w-8 h-8 text-gray-400" />
+              <div className="bg-muted rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+                <Pill className="w-8 h-8 text-muted-foreground" />
               </div>
               <h3 className="text-lg font-semibold mb-2">Nenhuma medicação registrada</h3>
-              <p className="text-gray-600 mb-4">Comece adicionando suas insulinas e medicamentos.</p>
+              <p className="text-muted-foreground mb-4">Comece adicionando suas insulinas e medicamentos.</p>
               <Button onClick={() => setIsModalOpen(true)} className="bg-blue-600 hover:bg-blue-700">
                 <Plus className="w-4 h-4 mr-2" />
                 Adicionar Primeira Medicação
               </Button>
             </div>
           ) : medications.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">Nenhuma medicação pontual registrada ainda.</div>
+            <div className="p-8 text-center text-muted-foreground">Nenhuma medicação pontual registrada ainda.</div>
           ) : (
-            <div className="divide-y">
+            <div className="divide-y divide-border">
               {medications.map((med) => (
-                <div key={med.id} className="p-6 hover:bg-gray-50 transition-colors">
+                <div key={med.id} className="p-6 hover:bg-muted/50 transition-colors">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="text-lg font-semibold">{med.medication_name}</h3>
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
                           {getMedicationTypeLabel(med.medication_type)}
                         </span>
                       </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-muted-foreground">
                         <div>
                           <span className="font-medium">Data:</span>{" "}
                           {format(new Date(med.administration_date), "dd/MM/yyyy")}
@@ -223,7 +222,7 @@ export function MedicacoesContent({ userId }: Props) {
                     </div>
                     <div className="flex gap-2 ml-4">
                       <Button variant="ghost" size="icon" onClick={() => setEditingMed(med)}>
-                        <Edit className="w-4 h-4 text-gray-600" />
+                        <Edit className="w-4 h-4 text-muted-foreground" />
                       </Button>
                       <Button variant="ghost" size="icon" onClick={() => handleDelete(med.id)}>
                         <Trash2 className="w-4 h-4 text-red-600" />

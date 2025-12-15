@@ -1,0 +1,2 @@
+ALTER TABLE glucose_readings ADD COLUMN IF NOT EXISTS carbs INTEGER;
+ALTER TABLE glucose_readings ADD COLUMN IF NOT EXISTS calories INTEGER;

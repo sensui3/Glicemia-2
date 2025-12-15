@@ -81,10 +81,10 @@ function getConditionLabel(condition: string, time?: string) {
 }
 function getStatusBadge(status: GlucoseStatus) {
   const styles = {
-    normal: "bg-green-100 text-green-800",
-    alto: "bg-red-100 text-red-800",
-    baixo: "bg-yellow-100 text-yellow-800",
-    atencao: "bg-orange-100 text-orange-800",
+    normal: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+    alto: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+    baixo: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+    atencao: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
   }
 
   const labels = {
@@ -137,7 +137,7 @@ export function GlucoseTable({
 
   return (
     <>
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-card rounded-xl shadow-sm overflow-hidden border border-border">
         {/* ... (filters) */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-4 border-b border-border">
           {/* ... (TableFilters and buttons) */}

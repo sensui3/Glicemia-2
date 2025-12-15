@@ -184,7 +184,7 @@ export function DashboardContent({
       {/* Title Section */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Painel de Controle</h1>
-        <p className="text-gray-600">Visão geral e monitoramento dos seus níveis de glicose.</p>
+        <p className="text-muted-foreground">Visão geral e monitoramento dos seus níveis de glicose.</p>
       </div>
 
       {/* Stats Cards */}

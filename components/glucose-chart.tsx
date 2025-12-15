@@ -1,10 +1,11 @@
 "use client"
 
-import { useMemo, memo } from "react"
+import { useMemo, memo, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from "recharts"
-import { format, parseISO } from "date-fns"
+import { format, parseISO, subDays, isAfter } from "date-fns"
 import { ptBR } from "date-fns/locale"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { GlucoseReading } from "@/lib/types"
 
 type Props = {
@@ -12,8 +13,18 @@ type Props = {
 }
 
 const GlucoseChartBase = ({ readings, limits }: Props & { limits?: import("@/lib/types").GlucoseLimits }) => {
+  const [range, setRange] = useState("7")
+
   const chartData = useMemo(() => {
+    const now = new Date()
+    const cutoffDate = subDays(now, parseInt(range))
+
     return [...readings]
+      .filter((reading) => {
+        if (range === "all") return true
+        const readingDate = parseISO(reading.reading_date)
+        return isAfter(readingDate, cutoffDate)
+      })
       .sort((a, b) => {
         const dateA = new Date(`${a.reading_date}T${a.reading_time}`)
         const dateB = new Date(`${b.reading_date}T${b.reading_time}`)
@@ -33,10 +44,10 @@ const GlucoseChartBase = ({ readings, limits }: Props & { limits?: import("@/lib
     if (active && payload && payload.length) {
       const data = payload[0].payload
       return (
-        <div className="bg-white p-3 rounded-lg shadow-lg border">
-          <p className="font-semibold text-sm mb-1">{data.fullDateTime}</p>
-          <p className="text-teal-600 font-bold text-lg">{data.value} mg/dL</p>
-          <p className="text-xs text-gray-500 mt-1">{getConditionLabel(data.condition)}</p>
+        <div className="bg-popover p-3 rounded-lg shadow-lg border border-border">
+          <p className="font-semibold text-sm mb-1 text-popover-foreground">{data.fullDateTime}</p>
+          <p className="text-teal-600 dark:text-teal-400 font-bold text-lg">{data.value} mg/dL</p>
+          <p className="text-xs text-muted-foreground mt-1">{getConditionLabel(data.condition)}</p>
         </div>
       )
     }
@@ -69,7 +80,7 @@ const GlucoseChartBase = ({ readings, limits }: Props & { limits?: import("@/lib
           <CardDescription>Evolução dos níveis de glicose ao longo do tempo</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="h-[300px] flex items-center justify-center text-gray-500">
+          <div className="h-[300px] flex items-center justify-center text-muted-foreground">
             Nenhum dado disponível para exibir no gráfico
           </div>
         </CardContent>
@@ -80,8 +91,20 @@ const GlucoseChartBase = ({ readings, limits }: Props & { limits?: import("@/lib
   return (
     <Card className="mt-6">
       <CardHeader>
-        <CardTitle>Gráfico de Monitoramento</CardTitle>
-        <CardDescription>Evolução dos níveis de glicose ao longo do tempo</CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Gráfico de Monitoramento</CardTitle>
+            <CardDescription>Evolução dos níveis de glicose ao longo do tempo</CardDescription>
+          </div>
+          <Tabs defaultValue="7" value={range} onValueChange={setRange} className="w-[300px]">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="7">7d</TabsTrigger>
+              <TabsTrigger value="14">14d</TabsTrigger>
+              <TabsTrigger value="30">30d</TabsTrigger>
+              <TabsTrigger value="90">90d</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
@@ -92,14 +115,14 @@ const GlucoseChartBase = ({ readings, limits }: Props & { limits?: import("@/lib
                 <stop offset="95%" stopColor="#0f766e" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-            <XAxis dataKey="displayDate" stroke="#6b7280" style={{ fontSize: "12px" }} />
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis dataKey="displayDate" stroke="hsl(var(--muted-foreground))" style={{ fontSize: "12px" }} />
             <YAxis
-              stroke="#6b7280"
+              stroke="hsl(var(--muted-foreground))"
               style={{ fontSize: "12px" }}
-              label={{ value: "mg/dL", angle: -90, position: "insideLeft", style: { fontSize: "12px" } }}
+              label={{ value: "mg/dL", angle: -90, position: "insideLeft", style: { fontSize: "12px", fill: "hsl(var(--muted-foreground))" } }}
             />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip content={<CustomTooltip />} cursor={{ stroke: "hsl(var(--muted-foreground))", strokeOpacity: 0.2 }} />
 
             {/* Linhas de referência dinâmicas */}
             <ReferenceLine
@@ -136,11 +159,11 @@ const GlucoseChartBase = ({ readings, limits }: Props & { limits?: import("@/lib
         <div className="mt-4 flex flex-wrap gap-4 justify-center text-xs">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-            <span className="text-gray-600">Normal Faixa Jejum ({fastingMin}-{fastingMax} mg/dL)</span>
+            <span className="text-muted-foreground">Normal Faixa Jejum ({fastingMin}-{fastingMax} mg/dL)</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-            <span className="text-gray-600">Meta Pós-Refeição (até {postMealMax} mg/dL)</span>
+            <span className="text-muted-foreground">Meta Pós-Refeição (até {postMealMax} mg/dL)</span>
           </div>
           {/* Can add more legends if needed, keeping it simple */}
         </div>

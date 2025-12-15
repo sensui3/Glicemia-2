@@ -40,8 +40,8 @@ export function MedicacoesWidget({ userId }: Props) {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-        <div className="text-gray-500 text-center">Carregando medicações...</div>
+      <div className="bg-card rounded-xl shadow-sm p-6 mb-6 border border-border">
+        <div className="text-muted-foreground text-center">Carregando medicações...</div>
       </div>
     )
   }
@@ -52,7 +52,7 @@ export function MedicacoesWidget({ userId }: Props) {
 
   return (
     <>
-      <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+      <div className="bg-card rounded-xl shadow-sm p-6 mb-6 border border-border">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Pill className="w-5 h-5 text-amber-600" />
@@ -66,11 +66,11 @@ export function MedicacoesWidget({ userId }: Props) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {medications.map((med) => (
-            <div key={med.id} className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <div key={med.id} className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-lg p-4">
               <div className="flex items-start justify-between mb-2">
                 <div>
                   <h4 className="font-semibold text-base">{med.medication_name}</h4>
-                  <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 mt-1">
+                  <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 mt-1">
                     {getMedicationTypeLabel(med.medication_type)}
                   </span>
                 </div>

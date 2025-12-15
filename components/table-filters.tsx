@@ -53,17 +53,17 @@ export function TableFilters({
 
   if (!isMounted) {
     return (
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-4 border-b border-border">
         <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
           {/* Skeleton/Placeholder to prevent layout shift */}
           <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
             {filters.map((filter) => (
-              <div key={filter.value} className="h-9 w-20 bg-gray-100 rounded-md animate-pulse" />
+              <div key={filter.value} className="h-9 w-20 bg-muted rounded-md animate-pulse" />
             ))}
           </div>
           <div className="flex items-center gap-3 w-full md:w-auto">
-            <div className="h-9 w-[140px] bg-gray-100 rounded-md animate-pulse" />
-            <div className="h-9 w-[140px] bg-gray-100 rounded-md animate-pulse" />
+            <div className="h-9 w-[140px] bg-muted rounded-md animate-pulse" />
+            <div className="h-9 w-[140px] bg-muted rounded-md animate-pulse" />
           </div>
         </div>
       </div>
@@ -72,7 +72,7 @@ export function TableFilters({
 
   return (
     <>
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-4 border-b border-border">
         <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
 
           {/* Main Date Filters */}
@@ -83,7 +83,7 @@ export function TableFilters({
                 variant={currentFilter === filter.value ? "default" : "outline"}
                 size="sm"
                 onClick={() => setFilter(filter.value)}
-                className={currentFilter === filter.value ? "bg-teal-600 hover:bg-teal-700" : ""}
+                className={currentFilter === filter.value ? "bg-teal-600 hover:bg-teal-700 text-white" : ""}
               >
                 {filter.label}
               </Button>
@@ -95,7 +95,7 @@ export function TableFilters({
             <div className="flex items-center gap-2 w-full md:w-auto">
               <Select value={periodFilter} onValueChange={onPeriodFilterChange}>
                 <SelectTrigger className="w-full md:w-[140px] h-9 text-xs">
-                  <Clock className="w-3 h-3 mr-2 text-gray-500" />
+                  <Clock className="w-3 h-3 mr-2 text-muted-foreground" />
                   <SelectValue placeholder="Período" />
                 </SelectTrigger>
                 <SelectContent>
@@ -108,7 +108,7 @@ export function TableFilters({
 
               <Select value={tagFilter} onValueChange={onTagFilterChange}>
                 <SelectTrigger className="w-full md:w-[140px] h-9 text-xs">
-                  <Syringe className="w-3 h-3 mr-2 text-gray-500" />
+                  <Syringe className="w-3 h-3 mr-2 text-muted-foreground" />
                   <SelectValue placeholder="Tags" />
                 </SelectTrigger>
                 <SelectContent>

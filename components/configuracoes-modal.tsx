@@ -297,7 +297,7 @@ export function ConfiguracoesModal({ open, onOpenChange }: Props) {
                         type="number"
                         value={limits.hypo_limit}
                         onChange={(e) => setLimits({ ...limits, hypo_limit: Number(e.target.value) })}
-                        className="border-red-200 focus:border-red-400 focus:ring-red-400"
+                        className="border-red-200 dark:border-red-900 focus:border-red-400 focus:ring-red-400"
                       />
                       <span className="absolute right-3 top-2.5 text-xs text-muted-foreground">mg/dL</span>
                     </div>
@@ -311,7 +311,7 @@ export function ConfiguracoesModal({ open, onOpenChange }: Props) {
                         type="number"
                         value={limits.hyper_limit}
                         onChange={(e) => setLimits({ ...limits, hyper_limit: Number(e.target.value) })}
-                        className="border-orange-200 focus:border-orange-400 focus:ring-orange-400"
+                        className="border-orange-200 dark:border-orange-900 focus:border-orange-400 focus:ring-orange-400"
                       />
                       <span className="absolute right-3 top-2.5 text-xs text-muted-foreground">mg/dL</span>
                     </div>
