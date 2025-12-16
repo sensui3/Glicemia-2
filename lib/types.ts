@@ -8,6 +8,12 @@ export type GlucoseReading = {
   observations: string | null
   carbs?: number | null
   calories?: number | null
+  activity_type?: string | null
+  activity_duration_minutes?: number | null
+  activity_intensity?: "baixa" | "moderada" | "alta" | null
+  activity_moment?: "antes_medicao" | "durante_atividade" | "apos_atividade" | null
+  steps_count?: number | null
+  activity_file_url?: string | null
   created_at: string
   updated_at: string
 }

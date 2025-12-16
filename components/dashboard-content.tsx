@@ -12,6 +12,8 @@ import { useGlucoseData } from "@/hooks/use-glucose-data"
 import { useUserProfile } from "@/hooks/use-user-profile"
 import type { GlucoseReading } from "@/lib/types"
 import { format, parseISO, subDays, isAfter } from "date-fns"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { VariabilityDashboard } from "@/components/variability-dashboard"
 
 type Props = {
   userId: string
@@ -196,69 +198,82 @@ export function DashboardContent({
       <DashboardClient userId={userId} onDataChange={handleDataChange} sortOrder={sortOrder} />
 
       {/* Stats Cards */}
-      <GlucoseStats userId={userId} refreshKey={statsKey} />
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList className="bg-muted/50 p-1 rounded-xl w-full justify-start h-auto">
+          <TabsTrigger value="overview" className="rounded-lg py-2 px-4">Visão Geral</TabsTrigger>
+          <TabsTrigger value="advanced" className="rounded-lg py-2 px-4">Análise Avançada e Atividades</TabsTrigger>
+        </TabsList>
 
-      {/* Main Chart Section - Added Margin Bottom for spacing */}
-      <div className="mb-12">
-        <GlucoseChart readings={chartReadings} limits={glucoseLimits} />
-      </div>
+        <TabsContent value="overview" className="space-y-10 animate-in fade-in-50">
+          <GlucoseStats userId={userId} refreshKey={statsKey} />
 
-      {/* Quick View: Recent Readings (Last 5) - Added per request for 'Quick visualization' */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
-          <MedicacoesWidget userId={userId} />
+          {/* Main Chart Section - Added Margin Bottom for spacing */}
+          <div className="mb-12">
+            <GlucoseChart readings={chartReadings} limits={glucoseLimits} />
+          </div>
 
-          <div className="bg-card rounded-xl border shadow-sm p-6">
-            <h3 className="font-semibold text-lg mb-4">Últimas Leituras</h3>
-            <div className="space-y-3">
-              {last5Readings.length === 0 ? (
-                <p className="text-muted-foreground text-sm">Nenhuma leitura recente.</p>
-              ) : (
-                last5Readings.map((reading) => (
-                  <div key={reading.id} className="flex justify-between items-center p-3 bg-muted/30 rounded-lg border">
-                    <div>
-                      <p className="font-bold text-lg">{reading.reading_value} <span className="text-xs font-normal text-muted-foreground">mg/dL</span></p>
-                      <p className="text-xs text-muted-foreground capitalize">{reading.condition.replace('_', ' ')} • {format(parseISO(reading.reading_date), "dd/MM")} {reading.reading_time.slice(0, 5)}</p>
-                    </div>
-                    <div className={`w-3 h-3 rounded-full ${reading.reading_value > (glucoseLimits?.post_meal_max || 140) ? 'bg-red-500' :
-                        reading.reading_value < (glucoseLimits?.hypo_limit || 70) ? 'bg-orange-500' : 'bg-green-500'
-                      }`} />
-                  </div>
-                ))
-              )}
+          {/* Quick View: Recent Readings (Last 5) - Added per request for 'Quick visualization' */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-8">
+              <MedicacoesWidget userId={userId} />
+
+              <div className="bg-card rounded-xl border shadow-sm p-6">
+                <h3 className="font-semibold text-lg mb-4">Últimas Leituras</h3>
+                <div className="space-y-3">
+                  {last5Readings.length === 0 ? (
+                    <p className="text-muted-foreground text-sm">Nenhuma leitura recente.</p>
+                  ) : (
+                    last5Readings.map((reading) => (
+                      <div key={reading.id} className="flex justify-between items-center p-3 bg-muted/30 rounded-lg border">
+                        <div>
+                          <p className="font-bold text-lg">{reading.reading_value} <span className="text-xs font-normal text-muted-foreground">mg/dL</span></p>
+                          <p className="text-xs text-muted-foreground capitalize">{reading.condition.replace('_', ' ')} • {format(parseISO(reading.reading_date), "dd/MM")} {reading.reading_time.slice(0, 5)}</p>
+                        </div>
+                        <div className={`w-3 h-3 rounded-full ${reading.reading_value > (glucoseLimits?.post_meal_max || 140) ? 'bg-red-500' :
+                          reading.reading_value < (glucoseLimits?.hypo_limit || 70) ? 'bg-orange-500' : 'bg-green-500'
+                          }`} />
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-8">
+              <MedicalCalendar userId={userId} />
             </div>
           </div>
-        </div>
-
-        <div className="space-y-8">
-          <MedicalCalendar userId={userId} />
-        </div>
-      </div>
 
 
-      {/* Main Table */}
-      <div className="pt-4">
-        <h2 className="text-xl font-semibold mb-4">Histórico Detalhado</h2>
-        <GlucoseTable
-          readings={readings}
-          totalPages={totalPages}
-          totalItems={totalItems}
-          currentPage={page}
-          currentFilter={filter}
-          onFilterChange={handleFilterChange}
-          onPageChange={handlePageChange}
-          onDataChange={handleDataChange}
-          viewMode={viewMode}
-          onViewModeChange={handleViewModeChange}
-          sortOrder={sortOrder}
-          onSortChange={handleSortChange}
-          periodFilter={periodFilter}
-          onPeriodFilterChange={handlePeriodFilterChange}
-          tagFilter={tagFilter}
-          onTagFilterChange={handleTagFilterChange}
-          limits={glucoseLimits}
-        />
-      </div>
+          {/* Main Table */}
+          <div className="pt-4">
+            <h2 className="text-xl font-semibold mb-4">Histórico Detalhado</h2>
+            <GlucoseTable
+              readings={readings}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              currentPage={page}
+              currentFilter={filter}
+              onFilterChange={handleFilterChange}
+              onPageChange={handlePageChange}
+              onDataChange={handleDataChange}
+              viewMode={viewMode}
+              onViewModeChange={handleViewModeChange}
+              sortOrder={sortOrder}
+              onSortChange={handleSortChange}
+              periodFilter={periodFilter}
+              onPeriodFilterChange={handlePeriodFilterChange}
+              tagFilter={tagFilter}
+              onTagFilterChange={handleTagFilterChange}
+              limits={glucoseLimits}
+            />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="advanced" className="animate-in fade-in-50">
+          <VariabilityDashboard readings={chartReadings} />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

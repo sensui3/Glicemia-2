@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Droplet, Coffee, Utensils, Moon, MoreHorizontal, Save } from "lucide-react"
+import { Droplet, Coffee, Utensils, Moon, MoreHorizontal, Save, Activity, Timer, Flame, Footprints } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 type Props = {
@@ -54,6 +54,14 @@ export function NovoRegistroModal({ open, onOpenChange, onDataChange, initialCon
   const [observations, setObservations] = useState("")
   const [detectedMeal, setDetectedMeal] = useState<string>("")
 
+  // Activity Fields
+  const [showActivity, setShowActivity] = useState(false)
+  const [activityType, setActivityType] = useState("")
+  const [activityDuration, setActivityDuration] = useState("")
+  const [activityIntensity, setActivityIntensity] = useState<"baixa" | "moderada" | "alta" | "">("")
+  const [activityMoment, setActivityMoment] = useState<"antes_medicao" | "durante_atividade" | "apos_atividade" | "">("")
+  const [steps, setSteps] = useState("")
+
   // Effect to handle open state updates (Templates or Auto-fill)
   useEffect(() => {
     if (open) {
@@ -73,6 +81,12 @@ export function NovoRegistroModal({ open, onOpenChange, onDataChange, initialCon
       setTime(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", hour12: false }))
       setValue("")
       setObservations("")
+      setShowActivity(false)
+      setActivityType("")
+      setActivityDuration("")
+      setActivityIntensity("")
+      setActivityMoment("")
+      setSteps("")
     }
   }, [open, initialCondition])
 
@@ -113,6 +127,12 @@ export function NovoRegistroModal({ open, onOpenChange, onDataChange, initialCon
         reading_value: Number.parseInt(value),
         observations: observations || null,
         user_id: user.id,
+        // Activity fields
+        activity_type: showActivity && activityType ? activityType : null,
+        activity_duration_minutes: showActivity && activityDuration ? Number.parseInt(activityDuration) : null,
+        activity_intensity: showActivity && activityIntensity ? activityIntensity : null,
+        activity_moment: showActivity && activityMoment ? activityMoment : null,
+        steps_count: steps ? Number.parseInt(steps) : null,
       }
 
       const { error } = await supabase.from("glucose_readings").insert(dataToInsert).select()
@@ -226,6 +246,106 @@ export function NovoRegistroModal({ open, onOpenChange, onDataChange, initialCon
             <p className="text-xs text-muted-foreground text-center mt-2">
               {selectedCondition === 'jejum' ? 'Meta: 70-99 mg/dL' : 'Meta pós-refeição: <140 mg/dL'}
             </p>
+          </div>
+
+          {/* Activity Section Toggle */}
+          <div className="border rounded-xl p-4 bg-muted/20">
+            <button
+              type="button"
+              onClick={() => setShowActivity(!showActivity)}
+              className="flex items-center gap-2 w-full text-left font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Activity className="w-5 h-5" />
+              <span>Registrar Atividade Física?</span>
+              <span className="ml-auto text-xs bg-muted px-2 py-1 rounded-full">{showActivity ? "Sim" : "Não"}</span>
+            </button>
+
+            {showActivity && (
+              <div className="mt-4 space-y-4 animate-in fade-in slide-in-from-top-2">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>Tipo</Label>
+                    <Input
+                      placeholder="Ex: Corrida, Caminhada"
+                      value={activityType}
+                      onChange={(e) => setActivityType(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Duração (min)</Label>
+                    <div className="relative">
+                      <Timer className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        className="pl-9"
+                        value={activityDuration}
+                        onChange={(e) => setActivityDuration(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Intensidade</Label>
+                  <div className="flex gap-2">
+                    {(["baixa", "moderada", "alta"] as const).map((intensity) => (
+                      <button
+                        key={intensity}
+                        type="button"
+                        onClick={() => setActivityIntensity(intensity)}
+                        className={`flex-1 py-2 text-xs font-medium rounded-md border transition-all ${activityIntensity === intensity
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-background hover:bg-muted"
+                          }`}
+                      >
+                        {intensity === "baixa" && "😌"}
+                        {intensity === "moderada" && "😅"}
+                        {intensity === "alta" && "🥵"}
+                        <span className="ml-1 capitalize">{intensity}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Momento</Label>
+                  <div className="flex gap-2">
+                    {[
+                      { id: "antes_medicao", label: "Antes da Medição" },
+                      { id: "durante_atividade", label: "Durante" },
+                      { id: "apos_atividade", label: "Após Atividade" }
+                    ].map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setActivityMoment(m.id as any)}
+                        className={`flex-1 py-2 text-[10px] sm:text-xs font-medium rounded-md border transition-all ${activityMoment === m.id
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-background hover:bg-muted"
+                          }`}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Passos (Opcional)</Label>
+                  <div className="relative">
+                    <Footprints className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="number"
+                      placeholder="Ex: 5000"
+                      className="pl-9"
+                      value={steps}
+                      onChange={(e) => setSteps(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Observações */}
