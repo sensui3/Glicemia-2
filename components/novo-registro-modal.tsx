@@ -10,8 +10,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Droplet, Coffee, Utensils, Moon, MoreHorizontal, Save, Activity, Timer, Flame, Footprints } from "lucide-react"
+import { Droplet, Coffee, Utensils, Moon, MoreHorizontal, Save, Activity, Timer, Flame, Footprints, Plus, Trash2, Apple, Sparkles } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { FoodSearchCombobox } from "@/components/food-search-combobox"
+import { FoodItem } from "@/hooks/use-food-data"
+import { useGlucosePrediction } from "@/hooks/use-glucose-prediction"
 
 type Props = {
   open: boolean
@@ -38,6 +41,17 @@ function getMealFromTime(time: string): string {
   return "Ceia"
 }
 
+function getMealTypeSlug(mealName: string): string | null {
+  const map: Record<string, string> = {
+    "Café da Manhã": "cafe_manha",
+    "Almoço": "almoco",
+    "Lanche da Tarde": "lanche",
+    "Jantar": "jantar",
+    "Ceia": "lanche"
+  };
+  return map[mealName] || null;
+}
+
 export function NovoRegistroModal({ open, onOpenChange, onDataChange, initialCondition }: Props) {
   const router = useRouter()
   const { toast } = useToast()
@@ -61,6 +75,26 @@ export function NovoRegistroModal({ open, onOpenChange, onDataChange, initialCon
   const [activityIntensity, setActivityIntensity] = useState<"baixa" | "moderada" | "alta" | "">("")
   const [activityMoment, setActivityMoment] = useState<"antes_medicao" | "durante_atividade" | "apos_atividade" | "">("")
   const [steps, setSteps] = useState("")
+
+  // Food Journal Fields
+  const [showFood, setShowFood] = useState(false)
+  const [selectedFoods, setSelectedFoods] = useState<(FoodItem & { portion: number })[]>([])
+  const [manualCarbs, setManualCarbs] = useState("")
+
+  const { predictImpact, prediction, loading: predictionLoading } = useGlucosePrediction()
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (selectedFoods.length > 0) {
+        predictImpact(selectedFoods)
+      }
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [selectedFoods, predictImpact])
+
+  const calculateTotalCarbs = () => {
+    return Math.round(selectedFoods.reduce((acc, curr) => acc + (curr.carboidratos_por_100g * curr.portion) / 100, 0))
+  }
 
   // Effect to handle open state updates (Templates or Auto-fill)
   useEffect(() => {
@@ -86,7 +120,11 @@ export function NovoRegistroModal({ open, onOpenChange, onDataChange, initialCon
       setActivityDuration("")
       setActivityIntensity("")
       setActivityMoment("")
+      setActivityMoment("")
       setSteps("")
+      setShowFood(false)
+      setSelectedFoods([])
+      setManualCarbs("")
     }
   }, [open, initialCondition])
 
@@ -133,6 +171,14 @@ export function NovoRegistroModal({ open, onOpenChange, onDataChange, initialCon
         activity_intensity: showActivity && activityIntensity ? activityIntensity : null,
         activity_moment: showActivity && activityMoment ? activityMoment : null,
         steps_count: steps ? Number.parseInt(steps) : null,
+        // Food fields
+        refeicao_tipo: detectedMeal ? getMealTypeSlug(detectedMeal) : null,
+        alimentos_consumidos: selectedFoods.map(f => ({
+          nome: f.nome,
+          porcao_g: f.portion,
+          carboidratos_g: (f.carboidratos_por_100g * f.portion) / 100
+        })),
+        carbs: calculateTotalCarbs() || (manualCarbs ? Number.parseInt(manualCarbs) : null)
       }
 
       const { error } = await supabase.from("glucose_readings").insert(dataToInsert).select()
@@ -295,8 +341,8 @@ export function NovoRegistroModal({ open, onOpenChange, onDataChange, initialCon
                         type="button"
                         onClick={() => setActivityIntensity(intensity)}
                         className={`flex-1 py-2 text-xs font-medium rounded-md border transition-all ${activityIntensity === intensity
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "bg-background hover:bg-muted"
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background hover:bg-muted"
                           }`}
                       >
                         {intensity === "baixa" && "😌"}
@@ -321,8 +367,8 @@ export function NovoRegistroModal({ open, onOpenChange, onDataChange, initialCon
                         type="button"
                         onClick={() => setActivityMoment(m.id as any)}
                         className={`flex-1 py-2 text-[10px] sm:text-xs font-medium rounded-md border transition-all ${activityMoment === m.id
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "bg-background hover:bg-muted"
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-background hover:bg-muted"
                           }`}
                       >
                         {m.label}
@@ -344,6 +390,110 @@ export function NovoRegistroModal({ open, onOpenChange, onDataChange, initialCon
                     />
                   </div>
                 </div>
+              </div>
+            )}
+          </div>
+
+
+          {/* Food Journal Section */}
+          <div className="border rounded-xl p-4 bg-muted/20">
+            <button
+              type="button"
+              onClick={() => setShowFood(!showFood)}
+              className="flex items-center gap-2 w-full text-left font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Apple className="w-5 h-5" />
+              <span>Registrar Alimentação?</span>
+              <span className="ml-auto text-xs bg-muted px-2 py-1 rounded-full">{showFood ? "Sim" : "Não"}</span>
+            </button>
+
+            {showFood && (
+              <div className="mt-4 space-y-4 animate-in fade-in slide-in-from-top-2">
+                <div className="space-y-2">
+                  <Label>Adicionar Alimentos</Label>
+                  <FoodSearchCombobox
+                    onSelect={(food) => {
+                      setSelectedFoods([...selectedFoods, { ...food, portion: 100 }])
+                    }}
+                  />
+                </div>
+
+                {selectedFoods.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Alimentos Selecionados</Label>
+                    <div className="space-y-2">
+                      {selectedFoods.map((food, index) => (
+                        <div key={index} className="flex items-center gap-2 bg-background p-2 rounded-md border text-sm">
+                          <div className="flex-1">
+                            <p className="font-medium">{food.nome}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {Math.round((food.carboidratos_por_100g * food.portion) / 100)}g carbs
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              value={food.portion}
+                              onChange={(e) => {
+                                const newFoods = [...selectedFoods]
+                                newFoods[index].portion = Number(e.target.value)
+                                setSelectedFoods(newFoods)
+                              }}
+                              className="w-20 h-8 text-right"
+                              min="0"
+                            />
+                            <span className="text-xs text-muted-foreground w-4">g</span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive/90"
+                            onClick={() => {
+                              const newFoods = selectedFoods.filter((_, i) => i !== index)
+                              setSelectedFoods(newFoods)
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex justify-between items-center pt-2 border-t">
+                      <span className="font-medium">Total de Carboidratos:</span>
+                      <span className="font-bold text-primary">
+                        {Math.round(selectedFoods.reduce((acc, curr) => acc + (curr.carboidratos_por_100g * curr.portion) / 100, 0))}g
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-2">
+                  <Label className="text-xs text-muted-foreground">Ou insira carboidratos manualmente:</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Input
+                      type="number"
+                      placeholder="Ex: 45"
+                      value={manualCarbs}
+                      onChange={(e) => setManualCarbs(e.target.value)}
+                      className="w-24 h-9"
+                    />
+                    <span className="text-sm">g</span>
+                  </div>
+                </div>
+
+                {prediction && (
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-3 rounded-lg flex items-start gap-3 mt-1 animate-in slide-in-from-bottom-2">
+                    <Sparkles className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-blue-700 dark:text-blue-300">Predição de Impacto</p>
+                      <p className="text-xs text-blue-600 dark:text-blue-400">
+                        Estimativa de subida: <strong>{prediction.range[0]}-{prediction.range[1]} mg/dL</strong>
+                        <span className="opacity-70 ml-1">(baseado em itens similares)</span>
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -373,6 +523,6 @@ export function NovoRegistroModal({ open, onOpenChange, onDataChange, initialCon
           </div>
         </form>
       </DialogContent>
-    </Dialog>
+    </Dialog >
   )
 }

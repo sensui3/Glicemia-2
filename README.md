@@ -11,24 +11,24 @@ Para informações técnicas detalhadas sobre arquitetura, banco de dados, compo
 
 ## 🚀 Funcionalidades Principais
 
-*   **Dashboard Intuitivo**: Visão geral com gráficos e estatísticas vitais
-*   **Registro Rápido**: Adicione medições de glicemia em segundos com contexto (jejum, pós-refeição, ao dormir, etc.)
-*   **Monitoramento Nutricional**: Registre carboidratos e calorias consumidas nas refeições
-*   **Calendário Médico**: Gerencie consultas, exames e vacinas com lembretes inteligentes
-*   **Histórico Detalhado**: Tabela pesquisável, filtrável e paginada de todas as leituras
-*   **Insights Visuais**: Gráficos interativos de tendência com período customizável
-*   **Gestão de Medicamentos**: Acompanhe diferentes tipos de insulina e medicamentos com suporte a medicações contínuas
-*   **Gestão de Médicos**: Cadastre e organize informações completas dos profissionais de saúde
-*   **Perfil Personalizável**: Limites de glicemia configuráveis por usuário (mg/dL ou mmol/L)
-*   **Autenticação Seguro**: Sistema completo de login, cadastro e verificação de email
-*   **Tema Personalizável**: Suporte automático a temas claro e escuro
-*   **Exportação de Dados**: Exporte registros em formato CSV para análise externa
-*   **Design Responsivo**: Interface otimizada para desktop, tablet e dispositivos móveis
-*   **Alertas Inteligentes**: Feedback visual imediato para níveis de hipoglicemia e hiperglicemia
-*   **Acessibilidade**: Interface totalmente acessível com suporte a leitores de tela e navegação por teclado
-
-## 🏗️ Arquitetura do Sistema
-
+*   **Dashboard Intuitivo**: Visão geral com gráficos interativos e estatísticas vitais
+*   **Registro Rápido de Leituras**: Adicione medições de glicemia em segundos com contexto inteligente (jejum, pós-refeição, antes exercício, etc.)
+*   **📊 Análises Avançadas de Variabilidade**: Coeficiente de Variação (CV), Desvio Padrão, GMI estimado e correlação com exercícios físicos
+*   **🧠 Inteligência Artificial Alimentar**: Predição de impacto glicêmico baseada no histórico pessoal de refeições similares
+*   **🍽️ Planejamento Alimentar Inteligente**: Sugestões automatizadas de refeições baseadas em dados reais, incluindo opções econômicas brasileiras
+*   **🥗 Banco de Alimentos Brasileiro**: Base extensiva de alimentos locais com informações nutricionais completas
+*   **🍎 Monitoramento Nutricional Detalhado**: Registre carboidratos, calorias, proteínas e fibras por refeição com análise de impacto
+*   **👨‍⚕️ Calendário Médico Integrado**: Gerencie consultas, exames e vacinas com lembretes inteligentes e histórico médico
+*   **📋 Histórico Detalhado**: Tabela pesquisável, filtrável e paginada de todas as leituras com estatísticas anuais
+*   **📈 Insights Visuais Avançados**: Gráficos interativos de tendência com período customizável e métricas mensais/anuais
+*   **💊 Gestão Completa de Medicamentos**: Acompanhe diversos tipos de insulina e medicamentos com medicações contínuas automáticas
+*   **🏥 Gestão de Médicos**: Cadastre e organize informações completas dos profissionais de saúde com histórico de consultas
+*   **⚙️ Perfil Personalizável**: Limites de glicemia configuráveis (mg/dL ou mmol/L) e alertas personalizados
+*   **🔐 Autenticação Seguro**: Sistema completo de login, cadastro e verificação de email via Supabase
+*   **🎨 Tema Personalizável Dinâmico**: Suporte automático a temas claro/escuro baseado nas preferências do sistema
+*   **📊 Exportação Inteligente de Dados**: Exporte registros em formato CSV com filtros customizáveis
+*   **📱 Design Responsivo Completo**: Interface otimizada para desktop, tablet e dispositivos móveis
+*   **🚨 Alertas Inteligentes**: Feedback visual imediato para hipoglicemia/hiperglicemia com zona cinza configurável
 ### Stack Tecnológica
 
 #### Frontend

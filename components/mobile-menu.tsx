@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Activity, LayoutDashboard, Pill, Menu, LogOut, Stethoscope } from "lucide-react"
+import { Activity, LayoutDashboard, Pill, Menu, LogOut, Stethoscope, Apple, CalendarDays } from "lucide-react"
+
+
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription } from "@/components/ui/sheet"
 import { Separator } from "@/components/ui/separator"
@@ -38,6 +40,16 @@ export function MobileMenu() {
       title: "Dashboard",
       icon: LayoutDashboard,
       href: "/dashboard",
+    },
+    {
+      title: "Alimentação",
+      icon: Apple,
+      href: "/dashboard/alimentacao/alimentos",
+    },
+    {
+      title: "Planejamento",
+      icon: CalendarDays,
+      href: "/dashboard/planejamento",
     },
     {
       title: "Medicações",

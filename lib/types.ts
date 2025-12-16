@@ -14,6 +14,9 @@ export type GlucoseReading = {
   activity_moment?: "antes_medicao" | "durante_atividade" | "apos_atividade" | null
   steps_count?: number | null
   activity_file_url?: string | null
+  // Food fields
+  refeicao_tipo?: "cafe_manha" | "almoco" | "jantar" | "lanche" | null
+  alimentos_consumidos?: { nome: string; porcao_g: number; carboidratos_g: number }[] | null
   created_at: string
   updated_at: string
 }

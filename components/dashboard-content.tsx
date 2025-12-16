@@ -14,6 +14,7 @@ import type { GlucoseReading } from "@/lib/types"
 import { format, parseISO, subDays, isAfter } from "date-fns"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { VariabilityDashboard } from "@/components/variability-dashboard"
+import { FoodStatsWidget } from "@/components/food-stats-widget"
 
 type Props = {
   userId: string
@@ -215,6 +216,7 @@ export function DashboardContent({
           {/* Quick View: Recent Readings (Last 5) - Added per request for 'Quick visualization' */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-8">
+              <FoodStatsWidget readings={chartReadings} />
               <MedicacoesWidget userId={userId} />
 
               <div className="bg-card rounded-xl border shadow-sm p-6">

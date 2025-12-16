@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Activity, LayoutDashboard, Pill, ChevronLeft, ChevronRight, Stethoscope } from "lucide-react"
+import { Activity, LayoutDashboard, Pill, ChevronLeft, ChevronRight, Stethoscope, Apple, CalendarDays } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -16,6 +16,16 @@ export function SidebarNav() {
       title: "Dashboard",
       icon: LayoutDashboard,
       href: "/dashboard",
+    },
+    {
+      title: "Alimentação",
+      icon: Apple,
+      href: "/dashboard/alimentacao/alimentos",
+    },
+    {
+      title: "Planejamento",
+      icon: CalendarDays,
+      href: "/dashboard/planejamento",
     },
     {
       title: "Medicações",
