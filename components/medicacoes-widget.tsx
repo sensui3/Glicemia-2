@@ -52,7 +52,7 @@ export function MedicacoesWidget({ userId }: Props) {
 
   return (
     <>
-      <div className="bg-card rounded-xl shadow-sm p-6 mb-6 border border-border">
+      <div className="bg-card rounded-xl shadow-sm p-6 border border-border">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Pill className="w-5 h-5 text-amber-600" />

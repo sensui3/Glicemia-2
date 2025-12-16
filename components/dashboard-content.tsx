@@ -188,37 +188,44 @@ export function DashboardContent({
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
-      {/* Title Section */}
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Painel de Controle</h1>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      {/* 1. Header Section */}
+      <section className="space-y-2">
+        <h1 className="text-3xl font-bold">Painel de Controle</h1>
         <p className="text-muted-foreground">Visão geral e monitoramento dos seus níveis de glicose.</p>
-      </div>
+      </section>
 
-      {/* Top Actions: Giant Button & Templates */}
-      <DashboardClient userId={userId} onDataChange={handleDataChange} sortOrder={sortOrder} />
+      {/* 2. Action Bar */}
+      <section>
+        <DashboardClient userId={userId} onDataChange={handleDataChange} sortOrder={sortOrder} />
+      </section>
 
-      {/* Stats Cards */}
-      <Tabs defaultValue="overview" className="space-y-6">
+      {/* 3. Main Content Tabs */}
+      <Tabs defaultValue="overview" className="space-y-8">
         <TabsList className="bg-muted/50 p-1 rounded-xl w-full justify-start h-auto">
           <TabsTrigger value="overview" className="rounded-lg py-2 px-4">Visão Geral</TabsTrigger>
           <TabsTrigger value="advanced" className="rounded-lg py-2 px-4">Análise Avançada e Atividades</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-10 animate-in fade-in-50">
-          <GlucoseStats userId={userId} refreshKey={statsKey} />
+        <TabsContent value="overview" className="space-y-12 animate-in fade-in-50">
 
-          {/* Main Chart Section - Added Margin Bottom for spacing */}
-          <div className="mb-12">
+          {/* Block A: KPI Stats */}
+          <section>
+            <GlucoseStats userId={userId} refreshKey={statsKey} />
+          </section>
+
+          {/* Block B: Main Chart */}
+          <section>
             <GlucoseChart readings={chartReadings} limits={glucoseLimits} />
-          </div>
+          </section>
 
-          {/* Quick View: Recent Readings (Last 5) - Added per request for 'Quick visualization' */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Block C: Widgets Grid (Food, Recent Readings, Calendar) */}
+          <section className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
             <div className="lg:col-span-2 space-y-8">
-              <FoodStatsWidget readings={chartReadings} />
-              <MedicacoesWidget userId={userId} />
+              {/* Food Stats */}
+              <FoodStatsWidget userId={userId} filter={fetchFilter} startDate={startDate} endDate={endDate} />
 
+              {/* Recent Readings Card */}
               <div className="bg-card rounded-xl border shadow-sm p-6">
                 <h3 className="font-semibold text-lg mb-4">Últimas Leituras</h3>
                 <div className="space-y-3">
@@ -241,15 +248,20 @@ export function DashboardContent({
               </div>
             </div>
 
+            {/* Right Column: Calendar */}
             <div className="space-y-8">
               <MedicalCalendar userId={userId} />
             </div>
-          </div>
+          </section>
 
+          {/* Block D: Continuous Medications (Full Width) */}
+          <section>
+            <MedicacoesWidget userId={userId} />
+          </section>
 
-          {/* Main Table */}
-          <div className="pt-4">
-            <h2 className="text-xl font-semibold mb-4">Histórico Detalhado</h2>
+          {/* Block E: Detailed Table */}
+          <section className="space-y-4">
+            <h2 className="text-xl font-semibold">Histórico Detalhado</h2>
             <GlucoseTable
               readings={readings}
               totalPages={totalPages}
@@ -269,7 +281,8 @@ export function DashboardContent({
               onTagFilterChange={handleTagFilterChange}
               limits={glucoseLimits}
             />
-          </div>
+          </section>
+
         </TabsContent>
 
         <TabsContent value="advanced" className="animate-in fade-in-50">

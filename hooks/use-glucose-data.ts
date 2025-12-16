@@ -72,6 +72,16 @@ export function useGlucoseData({
 
             if (tagFilter === "insulin") {
                 query = query.ilike("observations", "%insulina%")
+            } else if (tagFilter === "fasting") {
+                query = query.eq("condition", "jejum")
+            } else if (tagFilter === "post_meal") {
+                query = query.eq("condition", "apos_refeicao")
+            } else if (tagFilter === "hypo") {
+                query = query.lt("reading_value", 70)
+            } else if (tagFilter === "hyper") {
+                query = query.gt("reading_value", 140)
+            } else if (tagFilter === "exercise") {
+                query = query.not("activity_type", "is", null)
             }
 
             const { data, error } = await query

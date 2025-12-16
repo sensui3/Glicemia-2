@@ -99,6 +99,7 @@ Para mais detalhes, consulte:
         5. `scripts/003_add_continuous_medications.sql` (Suporte medicações contínuas)
         6. `scripts/003_add_nutrition_fields.sql` (Campos nutricionais)
         7. `scripts/004_add_medication_dashboard_visibility.sql` (Visibilidade no dashboard)
+        8. `scripts/005_get_glycemic_impacts.sql` (Procedure de impacto glicêmico)
 
 3.  **Instale as dependências**
     ```bash
