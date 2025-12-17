@@ -143,3 +143,22 @@ Contribuições são bem-vindas! Sinta-se à vontade para abrir Issues ou Pull R
 ## 📄 Licença
 
 Este projeto é open-source. Sinta-se livre para usar e modificar.
+
+## ⚡ Performance e Otimizações (Novo)
+
+Este projeto implementa estratégias avançadas de performance para garantir rapidez e responsividade:
+
+*   **Cache Inteligente (TanStack Query)**:
+    *   `staleTime`: 5 min (Leituras) / 30 min (Metadados).
+    *   Invalidação otimista e assinaturas Realtime via Supabase.
+*   **Code Splitting & Lazy Loading**:
+    *   Gráficos e Dashboards pesados carregados sob demanda.
+    *   Uso de Skeletons para feedback visual imediato.
+*   **Otimização de Assets**:
+    *   Imagens em WebP/AVIF via `next/image`.
+    *   Cache headers agressivos para fontes e estáticos.
+*   **Métricas**:
+    *   Relatório completo em `metrics.md`.
+    *   Comando para análise de bundle: `ANALYZE=true npm run build` (requer configuração do analyzer).
+*   **Testes**:
+    *   Testes unitários para hooks críticos (`npm run test`).

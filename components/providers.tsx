@@ -10,8 +10,13 @@ export function Providers({ children }: { children: ReactNode }) {
         defaultOptions: {
             queries: {
                 staleTime: 1000 * 60 * 5, // 5 minutes
-                gcTime: 1000 * 60 * 60, // 1 hour
+                gcTime: 1000 * 60 * 30, // 30 minutes
                 refetchOnWindowFocus: false,
+                refetchOnReconnect: true,
+                retry: 1,
+            },
+            mutations: {
+                retry: 0,
             },
         },
     }))

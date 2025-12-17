@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useToast } from "@/components/ui/use-toast"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { useAddGlucoseReading } from "@/hooks/use-glucose"
 
 type Props = {
   userId: string
@@ -29,12 +30,13 @@ const conditions = [
 export function NovoRegistroForm({ userId }: Props) {
   const router = useRouter()
   const { toast } = useToast()
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { mutate: addReading, isPending: isSubmitting } = useAddGlucoseReading()
 
-  // Estados do formulário
+  // Custom loading state for UI feedback if needed, but mutation provides it
+  const isLoading = isSubmitting
+  // State Definitions
   const today = new Date()
-  const localDate = today.toLocaleDateString('en-CA') // yyyy‑mm‑dd, matches HTML date input
+  const localDate = today.toLocaleDateString('en-CA')
   const localTime = today.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', hour12: false })
   const [date, setDate] = useState(localDate)
   const [time, setTime] = useState(localTime)
@@ -43,22 +45,20 @@ export function NovoRegistroForm({ userId }: Props) {
   const [carbs, setCarbs] = useState<string>("")
   const [calories, setCalories] = useState<string>("")
   const [observations, setObservations] = useState("")
+  const [error, setError] = useState<string | null>(null)
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
     setError(null)
 
     const numValue = Number.parseInt(value)
     if (!value || isNaN(numValue)) {
       setError("Por favor, insira um valor válido de glicemia")
-      setIsLoading(false)
       return
     }
 
     if (numValue < 20 || numValue > 600) {
       setError("O valor da glicemia deve estar entre 20 e 600 mg/dL")
-      setIsLoading(false)
       return
     }
 
@@ -70,29 +70,24 @@ export function NovoRegistroForm({ userId }: Props) {
       })
     }
 
-    try {
-      const supabase = createClient()
-
-      const { error: insertError } = await supabase.from("glucose_readings").insert({
-        user_id: userId,
-        reading_value: Number.parseInt(value),
-        reading_date: date,
-        reading_time: time,
-        condition,
-        carbs: carbs ? Number.parseInt(carbs) : null,
-        calories: calories ? Number.parseInt(calories) : null,
-        observations: observations || null,
-      })
-
-      if (insertError) throw insertError
-
-      router.push("/dashboard")
-      router.refresh()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao salvar registro")
-    } finally {
-      setIsLoading(false)
-    }
+    addReading({
+      user_id: userId,
+      reading_value: numValue,
+      reading_date: date,
+      reading_time: time,
+      condition: condition as any,
+      carbs: carbs ? Number.parseInt(carbs) : null,
+      calories: calories ? Number.parseInt(calories) : null,
+      observations: observations || null,
+    }, {
+      onSuccess: () => {
+        router.push("/dashboard")
+        // router.refresh() // No longer needed as we invalidate cache and use client data, but if server components depend on it, we might keep it. Ideally we rely on React Query cache now.
+      },
+      onError: (err) => {
+        setError(err.message)
+      }
+    })
   }
 
   return (

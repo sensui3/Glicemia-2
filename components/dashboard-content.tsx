@@ -2,19 +2,31 @@
 
 import { useState, useCallback, useMemo } from "react"
 import { useQueryClient } from "@tanstack/react-query"
+import dynamic from "next/dynamic"
 import { GlucoseTable } from "@/components/glucose-table"
 import { GlucoseStats } from "@/components/glucose-stats"
 import { DashboardClient } from "@/components/dashboard-client"
-import { GlucoseChart } from "@/components/glucose-chart"
 import { MedicacoesWidget } from "@/components/medicacoes-widget"
 import { MedicalCalendar } from "@/components/medical-calendar"
-import { useGlucoseData } from "@/hooks/use-glucose-data"
+// import { useGlucoseData } from "@/hooks/use-glucose-data" // Refactored
+import { useGlucoseReadings, useSubscribeToGlucose, GLUCOSE_KEYS } from "@/hooks/use-glucose"
 import { useUserProfile } from "@/hooks/use-user-profile"
 import type { GlucoseReading } from "@/lib/types"
 import { format, parseISO, subDays, isAfter } from "date-fns"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { VariabilityDashboard } from "@/components/variability-dashboard"
 import { FoodStatsWidget } from "@/components/food-stats-widget"
+import { ChartSkeleton } from "@/components/ui/skeletons"
+
+// Lazy Loading Components
+const GlucoseChart = dynamic(() => import("@/components/glucose-chart").then(mod => mod.GlucoseChart), {
+  loading: () => <ChartSkeleton />,
+  ssr: false
+})
+
+const VariabilityDashboard = dynamic(() => import("@/components/variability-dashboard").then(mod => mod.VariabilityDashboard), {
+  loading: () => <div className="h-96 w-full flex items-center justify-center"><ChartSkeleton /></div>,
+  ssr: false
+})
 
 type Props = {
   userId: string
@@ -33,6 +45,9 @@ export function DashboardContent({
 }: Props) {
   const queryClient = useQueryClient()
 
+  // Subscribe to Realtime Changes
+  useSubscribeToGlucose(userId)
+
   // State
   const [filter, setFilter] = useState(initialFilter)
   const [page, setPage] = useState(initialPage)
@@ -49,10 +64,10 @@ export function DashboardContent({
   // Fetch Logic: Always fetch at least 90 days to populate the chart history, unless custom range is selected.
   const fetchFilter = filter === "custom" ? "custom" : "90days"
 
-  // Fetch Data using React Query
-  const { data: allFetchedReadings = [], isLoading } = useGlucoseData({
+  // Fetch Data using New Optimized Hook
+  const { data: allFetchedReadings = [], isLoading } = useGlucoseReadings({
     userId,
-    filter: fetchFilter, // Use broader filter for data fetching covers chart needs
+    filter: fetchFilter,
     startDate,
     endDate,
     periodFilter,
@@ -148,7 +163,8 @@ export function DashboardContent({
 
   // Handlers
   const handleDataChange = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: ["glucose-data"] })
+    // Smart invalidation
+    await queryClient.invalidateQueries({ queryKey: GLUCOSE_KEYS.lists() })
     setStatsKey((prev) => prev + 1)
   }, [queryClient])
 
@@ -214,7 +230,7 @@ export function DashboardContent({
             <GlucoseStats userId={userId} refreshKey={statsKey} />
           </section>
 
-          {/* Block B: Main Chart */}
+          {/* Block B: Main Chart (Lazy Loaded) */}
           <section>
             <GlucoseChart readings={chartReadings} limits={glucoseLimits} />
           </section>
