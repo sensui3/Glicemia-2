@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { SidebarNav } from "@/components/sidebar-nav"
+import { LGPDConsentModal } from "@/components/lgpd-consent-modal"
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -19,6 +20,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <SidebarNav />
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
+      <LGPDConsentModal />
     </div>
   )
 }

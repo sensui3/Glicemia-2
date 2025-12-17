@@ -8,11 +8,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2, Download, HelpCircle, RotateCcw, ExternalLink, Eye } from "lucide-react"
+import { Loader2, Download, HelpCircle, RotateCcw, ExternalLink, Eye, Shield } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { AlterarSenhaModal } from "./alterar-senha-modal"
+import { DataExportDialog } from "./data-export-dialog"
+import { DeleteAccountDialog } from "./delete-account-dialog"
 import { GlucoseLimits } from "@/lib/types"
+import Link from "next/link"
 
 type Props = {
   open: boolean
@@ -384,7 +387,48 @@ export function ConfiguracoesModal({ open, onOpenChange }: Props) {
                 </div>
               </section>
 
-              {/* Seção 4: Acessibilidade */}
+              {/* Seção 4: Privacidade e LGPD */}
+              <section className="space-y-4">
+                <div className="flex items-center justify-between border-b pb-2">
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-5 h-5 text-primary" />
+                    <h3 className="font-semibold text-lg text-foreground">Privacidade e Dados (LGPD)</h3>
+                  </div>
+                </div>
+
+                <div className="grid gap-4">
+                  <div className="space-y-3">
+                    <Label>Documentos Legais</Label>
+                    <div className="flex flex-col gap-2">
+                      <Link href="/terms" target="_blank">
+                        <Button variant="outline" className="w-full justify-start gap-2">
+                          <ExternalLink className="w-4 h-4" />
+                          Termos de Uso
+                        </Button>
+                      </Link>
+                      <Link href="/privacy" target="_blank">
+                        <Button variant="outline" className="w-full justify-start gap-2">
+                          <ExternalLink className="w-4 h-4" />
+                          Política de Privacidade
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label>Seus Direitos (LGPD Art. 18)</Label>
+                    <div className="flex flex-col gap-2">
+                      <DataExportDialog />
+                      <DeleteAccountDialog />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Você tem direito à portabilidade e ao esquecimento dos seus dados conforme a Lei Geral de Proteção de Dados.
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              {/* Seção 5: Acessibilidade */}
               <section className="space-y-4">
                 <div className="flex items-center justify-between border-b pb-2">
                   <div className="flex items-center gap-2">
