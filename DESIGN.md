@@ -329,28 +329,36 @@ Utiliza Shadcn/ui com Tailwind CSS:
 - **Compatibilidade**: Arquivos legíveis por planilhas
 - **Privacidade**: Dados locais no navegador
 
-## Design e UX
+## Sistema de Design Visual (Semântica Stitch)
 
-### Princípios de Design
-- **Simplicidade**: Interface clara e direta
-- **Responsividade**: Otimização mobile-first
-- **Acessibilidade**: WCAG 2.1 compliance
-- **Performance**: Carregamento rápido e smooth
-- **Intuitividade**: Navegação lógica e familiar
+Para garantir a consistência visual em novas telas e componentes gerados via Stitch, o sistema segue esta linguagem:
 
-### Tema Visual
-- **Cores primárias**: Azul/teal para elementos principais
-- **Semântica de cor**: Vermelho para alerta/erro, verde para normal
-- **Tipografia**: Fontes limpas e legíveis
-- **Espaçamento**: Sistema consistente de margin/padding
-- **Bordas radiosas**: Interface moderna e amigável
+### 1. Tema Visual e Atmosfera
+O design segue uma estética **"Clínica Moderna"** — equilibrando a precisão médica com um toque amigável e focado no bem-estar do usuário. A interface é **Arejada** mas **Rica em Dados**, priorizando a clareza e a calma. O clima é de **Confiabilidade**, **Limpeza** e **Otimismo**, desenhado para reduzir o estresse do monitoramento contínuo de saúde.
 
-### Componentes Visuais
-- **Cards elevados**: Informações organizadas
-- **Ícones contextuais**: Lucide icon set
-- **Estados loading**: Skeleton loaders e spinners
-- **Animações suaves**: Transições não distrativas
-- **Feedback tátil**: Hover states e interações
+### 2. Paleta de Cores e Papéis Semânticos
+*   **Vibrant Trust Blue (#135bec):** Cor Primária, transmitindo confiança e autoridade. Usada para botões principais, destaques de navegação e estados ativos.
+*   **Clinical Snow White (#ffffff):** Cor de Fundo no modo claro, proporcionando um ambiente estéril e livre de distrações.
+*   **Deep Slate Grey (#1a2b3c):** Cor principal para Texto e Foreground, garantindo alto contraste e legibilidade profissional.
+*   **Warning Crimson (#ea2a33):** Cor semântica para alertas de Hiperglicemia, ações destrutivas e erros críticos.
+*   **Health Emerald (#13ec5b):** Cor semântica para indicadores de "Tempo no Alvo", recuperação e estados de sucesso.
+*   **Muted Silver (oklch(0.922 0 0)):** Usada para bordas, separadores e inputs inativos, fornecendo uma estrutura sutil.
+
+### 3. Regras de Tipografia
+*   **Família de Fontes:** **Inter** (Sans-serif). Uma tipografia moderna e altamente legível, escolhida pela clareza geométrica e excelente performance em interfaces densas em dados.
+*   **Cabeçalhos:** Pesos *Semibold* ou *Bold* são usados para títulos de página e leituras de glicose em destaque para criar uma hierarquia visual clara.
+*   **Corpo:** Peso *Regular* com entrelinha generosa para facilitar a leitura de notas médicas e descrições.
+*   **Dados:** Números em tabelas e gráficos usam peso *Medium* para se destacarem de rótulos de suporte.
+
+### 4. Estilização de Componentes
+*   **Botões:** Apresentam **cantos sutilmente arredondados** (`rounded-lg`, `radius: 0.625rem`). Usam fundos sólidos para ações primárias e estilos *ghost/outline* para navegação secundária.
+*   **Cards/Containers:** Definidos por **cantos sutilmente arredondados** (`rounded-lg`) e **sombras suaves e difusas**. Os fundos são tipicamente brancos sólidos ou cinzas muito levemente coloridos para separar os widgets no painel.
+*   **Inputs/Formulários:** Usam um estilo de **traço nítido e limpo** com borda Cinza Claro. Os estados focados são destacados com um anel azul suave na cor Primária.
+
+### 5. Princípios de Layout
+*   **Densidade Arejada:** O espaço em branco é usado estrategicamente para evitar que o usuário seja sobrecarregado pelo alto volume de dados médicos e gráficos.
+*   **Disciplina de Grade:** Um sistema de grade rígido garante que os widgets do painel (Gráficos, Tabelas, Estatísticas) estejam perfeitamente alinhados, criando um senso de ordem.
+*   **Fluidez Responsiva:** O layout transita de um "centro de comando" multi-coluna no desktop para uma visualização móvel focada em uma única coluna que prioriza formulários de entrada rápida e estatísticas de resumo.
 
 ## Performance e Otimização
 

@@ -67,11 +67,11 @@ export function GlucoseChart({ readings, limits }: Props) {
   const postMealMax = limits?.post_meal_max || 140
 
   return (
-    <Card className="col-span-1 shadow-md border-muted">
+    <Card className="col-span-1 shadow-xl border-primary/5 overflow-hidden">
       <CardHeader>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <CardTitle>Evolução da Glicemia</CardTitle>
+            <CardTitle className="font-display text-2xl tracking-tight">Evolução da Glicemia</CardTitle>
             <CardDescription>
               Acompanhe seus níveis ao longo do tempo
             </CardDescription>
@@ -145,16 +145,16 @@ export function GlucoseChart({ readings, limits }: Props) {
       {stats && (
         <CardFooter className="flex justify-between border-t p-4 bg-muted/20 rounded-b-xl gap-4 overflow-x-auto">
           <div className="flex flex-col">
-            <span className="text-xs text-muted-foreground uppercase font-bold">Média</span>
-            <span className="text-2xl font-bold">{stats.avg}</span>
+            <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider font-display">Média</span>
+            <span className="text-2xl font-bold font-display">{stats.avg}</span>
           </div>
           <div className="flex flex-col border-l pl-4">
-            <span className="text-xs text-muted-foreground uppercase font-bold">Mínima</span>
-            <span className="text-xl font-semibold text-green-600">{stats.min}</span>
+            <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider font-display">Mínima</span>
+            <span className="text-xl font-semibold text-green-600 font-display">{stats.min}</span>
           </div>
           <div className="flex flex-col border-l pl-4">
-            <span className="text-xs text-muted-foreground uppercase font-bold">Máxima</span>
-            <span className="text-xl font-semibold text-red-600">{stats.max}</span>
+            <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider font-display">Máxima</span>
+            <span className="text-xl font-semibold text-red-600 font-display">{stats.max}</span>
           </div>
           <div className="flex flex-col border-l pl-4 items-center">
             <span className="text-xs text-muted-foreground uppercase font-bold">Tendência</span>

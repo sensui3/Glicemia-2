@@ -400,13 +400,13 @@ export function ConfiguracoesModal({ open, onOpenChange }: Props) {
                   <div className="space-y-3">
                     <Label>Documentos Legais</Label>
                     <div className="flex flex-col gap-2">
-                      <Link href="/terms" target="_blank">
+                      <Link href="/terms" target="_blank" rel="noopener noreferrer">
                         <Button variant="outline" className="w-full justify-start gap-2">
                           <ExternalLink className="w-4 h-4" />
                           Termos de Uso
                         </Button>
                       </Link>
-                      <Link href="/privacy" target="_blank">
+                      <Link href="/privacy" target="_blank" rel="noopener noreferrer">
                         <Button variant="outline" className="w-full justify-start gap-2">
                           <ExternalLink className="w-4 h-4" />
                           Política de Privacidade

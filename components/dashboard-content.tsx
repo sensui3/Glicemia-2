@@ -9,7 +9,7 @@ import { DashboardClient } from "@/components/dashboard-client"
 import { MedicacoesWidget } from "@/components/medicacoes-widget"
 import { MedicalCalendar } from "@/components/medical-calendar"
 // import { useGlucoseData } from "@/hooks/use-glucose-data" // Refactored
-import { useGlucoseReadings, useSubscribeToGlucose, GLUCOSE_KEYS } from "@/hooks/use-glucose"
+import { useGlucoseReadings, useGlucoseReadingsPaginated, useSubscribeToGlucose, GLUCOSE_KEYS } from "@/hooks/use-glucose"
 import { useUserProfile } from "@/hooks/use-user-profile"
 import type { GlucoseReading } from "@/lib/types"
 import { format, parseISO, subDays, isAfter } from "date-fns"
@@ -64,8 +64,8 @@ export function DashboardContent({
   // Fetch Logic: Always fetch at least 90 days to populate the chart history, unless custom range is selected.
   const fetchFilter = filter === "custom" ? "custom" : "90days"
 
-  // Fetch Data using New Optimized Hook
-  const { data: allFetchedReadings = [], isLoading } = useGlucoseReadings({
+  // Fetch Summary Data (90 days) for Chart and Stats
+  const { data: allFetchedReadings = [], isLoading: isChartLoading } = useGlucoseReadings({
     userId,
     filter: fetchFilter,
     startDate,
@@ -74,80 +74,88 @@ export function DashboardContent({
     tagFilter,
   })
 
+  // Fetch Paginated Data for Table (Server-side)
+  const { data: paginatedResponse, isLoading: isTableLoading } = useGlucoseReadingsPaginated({
+    userId,
+    page,
+    limit: ITEMS_PER_PAGE,
+    filter,
+    periodFilter,
+    tagFilter,
+    startDate,
+    endDate,
+    sortBy: 'reading_date',
+    sortOrder,
+  })
+
+  const isLoading = isChartLoading || isTableLoading
+
   // Fetch User Preferences (Limits) using Hook
   const { data: userProfile } = useUserProfile(userId)
   const glucoseLimits = userProfile?.glucose_limits
 
-  // Derived State for Table (Client-side filtering matches the UI filter)
+  // TABLE DATA LOGIC
   const processedData = useMemo(() => {
-    // 1. Filter by UI Filter (e.g. 7 days) if not custom
-    let filteredReadings = [...allFetchedReadings]
-
-    if (filter !== "custom" && filter !== "90days") {
-      const now = new Date()
-      let daysToSub = 90
-      if (filter === "7days") daysToSub = 7
-      if (filter === "today") daysToSub = 1
-      if (filter === "30days") daysToSub = 30
-
-      if (filter === "today") {
-        const todayStr = now.toISOString().split("T")[0]
-        filteredReadings = filteredReadings.filter(r => r.reading_date === todayStr)
-      } else {
-        const cutoffDate = subDays(now, daysToSub)
-        filteredReadings = filteredReadings.filter(r => {
-          const rDate = parseISO(r.reading_date)
-          return isAfter(rDate, cutoffDate)
-        })
-      }
-    }
-
-    // Sort logic
-    const sorted = [...filteredReadings].sort((a, b) => {
-      const dateA = a.reading_date + a.reading_time
-      const dateB = b.reading_date + b.reading_time
-      return sortOrder === "asc"
-        ? dateA.localeCompare(dateB)
-        : dateB.localeCompare(dateA)
-    })
-
-    // Pagination logic
     let currentReadings: GlucoseReading[] = []
     let totalPages = 0
     let totalItems = 0
 
     if (viewMode === "medical") {
-      // Group by date for Medical View
+      // In Medical View, we still use client-side logic from the 90-day pool
+      // because server-side date grouping with pagination is complex.
+      // 1. Filter by UI Filter
+      let filteredForMedical = [...allFetchedReadings]
+      if (filter !== "custom" && filter !== "90days") {
+        const now = new Date()
+        let daysToSub = 90
+        if (filter === "7days") daysToSub = 7
+        if (filter === "today") daysToSub = 1
+        if (filter === "30days") daysToSub = 30
+
+        if (filter === "today") {
+          const todayStr = now.toISOString().split("T")[0]
+          filteredForMedical = filteredForMedical.filter((r: GlucoseReading) => r.reading_date === todayStr)
+        } else {
+          const cutoffDate = subDays(now, daysToSub)
+          filteredForMedical = filteredForMedical.filter((r: GlucoseReading) => {
+            const rDate = parseISO(r.reading_date)
+            return isAfter(rDate, cutoffDate)
+          })
+        }
+      }
+
+      const sorted = [...filteredForMedical].sort((a, b) => {
+        const dateA = a.reading_date + a.reading_time
+        const dateB = b.reading_date + b.reading_time
+        return sortOrder === "asc" ? dateA.localeCompare(dateB) : dateB.localeCompare(dateA)
+      })
+
       const uniqueDates = Array.from(new Set(sorted.map(r => r.reading_date)))
       totalItems = uniqueDates.length
       totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE)
 
       const startIdx = (page - 1) * ITEMS_PER_PAGE
       const pageDates = uniqueDates.slice(startIdx, startIdx + ITEMS_PER_PAGE)
-
-      currentReadings = sorted.filter(r => pageDates.includes(r.reading_date))
+      currentReadings = sorted.filter((r: GlucoseReading) => pageDates.includes(r.reading_date))
     } else {
-      // Standard View
-      totalItems = sorted.length
-      totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE)
-
-      const startIdx = (page - 1) * ITEMS_PER_PAGE
-      const currentReadingsSlice = sorted.slice(startIdx, startIdx + ITEMS_PER_PAGE)
-      currentReadings = currentReadingsSlice
+      // Standard View: Use the precision server-side paginated data
+      currentReadings = paginatedResponse?.data || []
+      totalItems = paginatedResponse?.pagination.total || 0
+      totalPages = paginatedResponse?.pagination.totalPages || 0
     }
 
-    // Chart data: Use allFetchedReadings (up to 90 days) but sorted chronologically
+    // CHART DATA: Always use up to 90 days pool
     const chartReadings = [...allFetchedReadings].sort((a, b) => {
       const dateA = a.reading_date + a.reading_time
       const dateB = b.reading_date + b.reading_time
       return dateA.localeCompare(dateB)
     })
 
-    // Quick View: Last 5 readings
+    // QUICK VIEW: Last 5 readings
     const last5Readings = [...allFetchedReadings].sort((a, b) => {
       const dateA = a.reading_date + a.reading_time
       const dateB = b.reading_date + b.reading_time
-      return dateB.localeCompare(dateA) // descending
+      return dateB.localeCompare(dateA)
     }).slice(0, 5)
 
     return {
@@ -157,7 +165,7 @@ export function DashboardContent({
       totalPages,
       totalItems
     }
-  }, [allFetchedReadings, filter, viewMode, page, sortOrder, ITEMS_PER_PAGE])
+  }, [allFetchedReadings, paginatedResponse, filter, viewMode, page, sortOrder, ITEMS_PER_PAGE])
 
   const { readings, chartReadings, last5Readings, totalPages, totalItems } = processedData
 
@@ -165,8 +173,8 @@ export function DashboardContent({
   const handleDataChange = useCallback(async () => {
     // Smart invalidation
     await queryClient.invalidateQueries({ queryKey: GLUCOSE_KEYS.lists() })
-    setStatsKey((prev) => prev + 1)
-  }, [queryClient])
+    setStatsKey((prev: number) => prev + 1)
+  }, [queryClient, setStatsKey])
 
   const handleFilterChange = (newFilter: string, newStartDate?: string, newEndDate?: string) => {
     setFilter(newFilter)
@@ -207,7 +215,7 @@ export function DashboardContent({
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* 1. Header Section */}
       <section className="space-y-2">
-        <h1 className="text-3xl font-bold">Painel de Controle</h1>
+        <h1 className="text-3xl font-bold font-display tracking-tight">Painel de Vida</h1>
         <p className="text-muted-foreground">Visão geral e monitoramento dos seus níveis de glicose.</p>
       </section>
 

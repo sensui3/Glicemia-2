@@ -14,6 +14,7 @@ import {
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
+import type { GlucoseReading } from "@/lib/types"
 
 type Props = {
   userId: string
@@ -72,17 +73,17 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
     const allReadings = readings || []
 
     // Filtrar dados para 7 dias (para Média, Alta, Baixa)
-    const sevenDayReadings = allReadings.filter((r) => new Date(r.reading_date) >= sevenDaysAgo)
+    const sevenDayReadings = allReadings.filter((r: GlucoseReading) => new Date(r.reading_date) >= sevenDaysAgo)
 
     // Calcular média dos últimos 7 dias
     const avg =
       sevenDayReadings.length > 0
-        ? Math.round(sevenDayReadings.reduce((sum, r) => sum + r.reading_value, 0) / sevenDayReadings.length)
+        ? Math.round(sevenDayReadings.reduce((sum: number, r: GlucoseReading) => sum + r.reading_value, 0) / sevenDayReadings.length)
         : 0
     setAverage(avg)
 
     // Calcular Time in Range (70-180 mg/dL)
-    const inRange = sevenDayReadings.filter(r => r.reading_value >= 70 && r.reading_value <= 180).length
+    const inRange = sevenDayReadings.filter((r: GlucoseReading) => r.reading_value >= 70 && r.reading_value <= 180).length
     const total = sevenDayReadings.length
     const tir = total > 0 ? Math.round((inRange / total) * 100) : 0
     setTimeInRange(tir)
@@ -90,25 +91,25 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
     // Encontrar maior e menor leitura (nos últimos 7 dias)
     const high =
       sevenDayReadings.length > 0
-        ? sevenDayReadings.reduce((max, r) => (r.reading_value > max.reading_value ? r : max))
+        ? sevenDayReadings.reduce((max: GlucoseReading, r: GlucoseReading) => (r.reading_value > max.reading_value ? r : max))
         : null
     setHighest(high)
 
     const low =
       sevenDayReadings.length > 0
-        ? sevenDayReadings.reduce((min, r) => (r.reading_value < min.reading_value ? r : min))
+        ? sevenDayReadings.reduce((min: GlucoseReading, r: GlucoseReading) => (r.reading_value < min.reading_value ? r : min))
         : null
     setLowest(low)
 
     // Calcular tendência (comparar última semana com semana anterior)
-    const previousWeekReadings = allReadings.filter((r) => {
+    const previousWeekReadings = allReadings.filter((r: GlucoseReading) => {
       const d = new Date(r.reading_date)
       return d >= fourteenDaysAgo && d < sevenDaysAgo
     })
 
     const previousAverage =
       previousWeekReadings.length > 0
-        ? previousWeekReadings.reduce((sum, r) => sum + r.reading_value, 0) / previousWeekReadings.length
+        ? previousWeekReadings.reduce((sum: number, r: GlucoseReading) => sum + r.reading_value, 0) / previousWeekReadings.length
         : 0
 
     const calculatedTrend =
@@ -116,11 +117,11 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
     setTrend(calculatedTrend)
 
     // Calcular HbA1c atual (baseada nos últimos 90 dias a partir de hoje)
-    const currentReadings90 = allReadings.filter((r) => new Date(r.reading_date) >= ninetyDaysAgo)
+    const currentReadings90 = allReadings.filter((r: GlucoseReading) => new Date(r.reading_date) >= ninetyDaysAgo)
 
     const avg90 =
       currentReadings90.length > 0
-        ? currentReadings90.reduce((sum, r) => sum + r.reading_value, 0) / currentReadings90.length
+        ? currentReadings90.reduce((sum: number, r: GlucoseReading) => sum + r.reading_value, 0) / currentReadings90.length
         : 0
 
     const estimatedA1c = avg90 > 0 ? ((avg90 + 46.7) / 28.7).toFixed(1) : 0
@@ -137,7 +138,7 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
       windowStart.setDate(windowStart.getDate() - 90) // Janela de 90 dias para trás da data de referência
 
       // Filtrar leituras para essa janela específica [windowStart, refDate]
-      const windowReadings = allReadings.filter((r) => {
+      const windowReadings = allReadings.filter((r: GlucoseReading) => {
         const d = new Date(r.reading_date + "T" + r.reading_time) // Adicionar tempo para precisão se necessário, ou só data
         // Simplificando comparação de datas strings 'YYYY-MM-DD'
         const rDate = new Date(r.reading_date)
@@ -146,7 +147,7 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
       })
 
       if (windowReadings.length > 0) {
-        const wAvg = windowReadings.reduce((sum, r) => sum + r.reading_value, 0) / windowReadings.length
+        const wAvg = windowReadings.reduce((sum: number, r: GlucoseReading) => sum + r.reading_value, 0) / windowReadings.length
         const wA1c = (wAvg + 46.7) / 28.7
         history.push({
           date: refDate.toISOString().split("T")[0],
@@ -176,15 +177,15 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       {/* Média */}
-      <div className="bg-card rounded-xl p-6 shadow-sm border border-border">
+      <div className="bg-card rounded-xl p-6 shadow-sm border border-border border-l-4 border-l-teal-500 hover:shadow-md transition-all duration-300">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-muted-foreground">MÉDIA (7 DIAS)</span>
+          <span className="text-xs font-bold text-muted-foreground tracking-widest font-display">MÉDIA (7 DIAS)</span>
           <div className="bg-teal-100 dark:bg-teal-900/30 p-2 rounded-lg">
             <Activity className="w-4 h-4 text-teal-700 dark:text-teal-400" />
           </div>
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="text-4xl font-bold">{average}</span>
+          <span className="text-4xl font-bold font-display tracking-tight">{average}</span>
           <span className="text-lg text-muted-foreground">mg/dL</span>
         </div>
         {trend !== 0 && (
@@ -200,7 +201,8 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
       {/* HbA1c Estimada com Modal */}
       <Dialog>
         <DialogTrigger asChild>
-          <div className="bg-card rounded-xl p-6 shadow-sm cursor-pointer transition-all hover:shadow-md border border-border hover:border-purple-200 dark:hover:border-purple-800 group">
+          <div className="bg-card rounded-xl p-6 shadow-sm cursor-pointer transition-all hover:shadow-lg border border-border border-l-4 border-l-purple-500 hover:border-purple-200 dark:hover:border-purple-800 group relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-bl-full pointer-events-none" />
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-muted-foreground group-hover:text-purple-700 dark:group-hover:text-purple-400 transition-colors">
                 HbA1c ESTIMADA
@@ -210,7 +212,7 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
               </div>
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-bold">{hba1c}</span>
+              <span className="text-4xl font-bold font-display tracking-tight">{hba1c}</span>
               <span className="text-lg text-muted-foreground">%</span>
             </div>
             <div className="flex items-center gap-1 mt-2 text-sm text-muted-foreground group-hover:text-purple-600 dark:group-hover:text-purple-400">
@@ -288,16 +290,15 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
         </DialogContent>
       </Dialog>
 
-      {/* Maior Leitura */}
-      <div className="bg-card rounded-xl p-6 shadow-sm border border-border">
+      <div className="bg-card rounded-xl p-6 shadow-sm border border-border border-l-4 border-l-red-500 hover:shadow-md transition-all duration-300">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-muted-foreground">MAIOR (7 DIAS)</span>
+          <span className="text-xs font-bold text-muted-foreground tracking-widest font-display">MAIOR (7 DIAS)</span>
           <div className="bg-red-100 dark:bg-red-900/30 p-2 rounded-lg">
             <TrendingUp className="w-4 h-4 text-red-700 dark:text-red-400" />
           </div>
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="text-4xl font-bold">{highest?.reading_value || 0}</span>
+          <span className="text-4xl font-bold font-display tracking-tight">{highest?.reading_value || 0}</span>
           <span className="text-lg text-muted-foreground">mg/dL</span>
         </div>
         {highest && (
@@ -307,16 +308,15 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
         )}
       </div>
 
-      {/* Meta Semanal (Time In Range) */}
-      <div className="bg-card rounded-xl p-6 shadow-sm border border-border">
+      <div className="bg-card rounded-xl p-6 shadow-sm border border-border border-l-4 border-l-blue-500 hover:shadow-md transition-all duration-300">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-muted-foreground">META SEMANAL</span>
+          <span className="text-xs font-bold text-muted-foreground tracking-widest font-display">META SEMANAL</span>
           <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-lg">
             <Target className="w-4 h-4 text-blue-700 dark:text-blue-400" />
           </div>
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="text-4xl font-bold">{timeInRange}%</span>
+          <span className="text-4xl font-bold font-display tracking-tight">{timeInRange}%</span>
           <span className="text-lg text-muted-foreground">no alvo</span>
         </div>
         <div className="w-full bg-muted rounded-full h-2.5 mt-2">
@@ -328,16 +328,15 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
         <p className="text-xs text-muted-foreground mt-2">Alvo: &gt;70% (70-180 mg/dL)</p>
       </div>
 
-      {/* Menor Leitura */}
-      <div className="bg-card rounded-xl p-6 shadow-sm border border-border">
+      <div className="bg-card rounded-xl p-6 shadow-sm border border-border border-l-4 border-l-yellow-500 hover:shadow-md transition-all duration-300">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-muted-foreground">MENOR (7 DIAS)</span>
+          <span className="text-xs font-bold text-muted-foreground tracking-widest font-display">MENOR (7 DIAS)</span>
           <div className="bg-yellow-100 dark:bg-yellow-900/30 p-2 rounded-lg">
             <TrendingDown className="w-4 h-4 text-yellow-700 dark:text-yellow-400" />
           </div>
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="text-4xl font-bold">{lowest?.reading_value || 0}</span>
+          <span className="text-4xl font-bold font-display tracking-tight">{lowest?.reading_value || 0}</span>
           <span className="text-lg text-muted-foreground">mg/dL</span>
         </div>
         {lowest && (
