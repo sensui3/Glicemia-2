@@ -1,14 +1,14 @@
 const cspHeader = `
     default-src 'self';
-    script-src 'self' 'unsafe-eval' 'unsafe-inline';
-    style-src 'self' 'unsafe-inline';
-    img-src 'self' blob: data: https://*.supabase.co;
-    font-src 'self' data:;
+    script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live;
+    style-src 'self' 'unsafe-inline' https://vercel.live;
+    img-src 'self' blob: data: https://*.supabase.co https://vercel.live;
+    font-src 'self' data: https://vercel.live;
     object-src 'none';
     base-uri 'self';
     form-action 'self';
     frame-ancestors 'none';
-    connect-src 'self' https://*.supabase.co https://*.supabase.net wss://*.supabase.co;
+    connect-src 'self' https://*.supabase.co https://*.supabase.net wss://*.supabase.co https://vercel.live;
     upgrade-insecure-requests;
 `.replace(/\s{2,}/g, ' ').trim();
 
