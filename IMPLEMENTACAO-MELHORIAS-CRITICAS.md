@@ -1,359 +1,395 @@
-# Relatório de Implementação - Melhorias Críticas
+---
+description: Implementação de Server-Side Pagination, Virtualização e LGPD Compliance
+---
 
-**Data:** 16/12/2025  
-**Sistema:** Controle de Glicemia  
-**Status:** ✅ Implementação Concluída
+# Plano de Implementação - Melhorias Críticas
+
+## 🎯 Objetivos
+
+1. **Server-Side Pagination** - Redução de 80% no tempo de carregamento para datasets grandes
+2. **Virtualização de Tabelas** - 95% redução em DOM nodes com @tanstack/react-virtual
+3. **LGPD Compliance** - Políticas de privacidade e consentimento granular
 
 ---
 
-## 📋 Resumo Executivo
+## 📊 Fase 1: Server-Side Pagination
 
-Foram implementadas com sucesso as três melhorias críticas solicitadas:
+### Análise de Impacto
+- **Arquivos Afetados**: 
+  - `hooks/use-glucose.ts` (modificação)
+  - `components/dashboard-content.tsx` (modificação)
+  - `components/glucose-table.tsx` (modificação leve)
+  
+- **Riscos**: 
+  - ⚠️ Mudança na estrutura de retorno do hook
+  - ⚠️ Necessidade de ajustar lógica de cache do TanStack Query
+  - ✅ Não afeta componentes de visualização (charts)
 
-1. ✅ **Server-Side Pagination** - Redução projetada de 80% no tempo de carregamento
-2. ✅ **Virtualização de Tabelas** - Preparação para 95% redução em DOM nodes
-3. ✅ **LGPD Compliance** - Compliance completo com políticas e ferramentas
+### Implementação
 
----
-
-## 🚀 Fase 1: Server-Side Pagination
-
-### Implementações Realizadas
-
-#### 1.1 Novo Hook de Paginação
-**Arquivo:** `hooks/use-glucose.ts`
-
-**Adições:**
-- ✅ Tipos `UseGlucosePaginatedOptions` e `PaginatedResponse<T>`
-- ✅ Hook `useGlucoseReadingsPaginated` com:
-  - Paginação server-side via `.range()`
-  - Contagem total de registros (`count: 'exact'`)
-  - Suporte a todos os filtros existentes
-  - Ordenação configurável
-  - Cache otimizado (2min staleTime, 10min gcTime)
-
-**Características:**
+#### 1.1 Atualizar Hook `use-glucose.ts`
 ```typescript
-// Retorna dados paginados + metadados
-{
-  data: GlucoseReading[],
-  pagination: {
-    total: number,
-    page: number,
-    limit: number,
-    totalPages: number
-  }
+// Adicionar suporte para paginação server-side
+export function useGlucoseReadingsPaginated({
+  userId,
+  page = 1,
+  limit = 15,
+  filter,
+  periodFilter,
+  tagFilter,
+  startDate,
+  endDate,
+  sortBy = 'reading_date',
+  sortOrder = 'desc'
+}: UseGlucosePaginatedOptions) {
+  return useQuery({
+    queryKey: GLUCOSE_KEYS.list(`${userId}-${filter}-${page}-${limit}-${sortOrder}`),
+    queryFn: async () => {
+      const supabase = createClient()
+      const offset = (page - 1) * limit
+      
+      // Query com paginação
+      let query = supabase
+        .from("glucose_readings")
+        .select("*", { count: 'exact' })
+        .eq("user_id", userId)
+        .range(offset, offset + limit - 1)
+        .order(sortBy, { ascending: sortOrder === 'asc' })
+      
+      // Aplicar filtros...
+      
+      const { data, error, count } = await query
+      
+      return {
+        data: data as GlucoseReading[],
+        pagination: {
+          total: count || 0,
+          page,
+          limit,
+          totalPages: Math.ceil((count || 0) / limit)
+        }
+      }
+    }
+  })
 }
 ```
 
-**Benefícios:**
-- ⚡ Carrega apenas 15 registros por página (vs. 90 dias completos)
-- 📊 Contagem total sem carregar todos os dados
-- 🔄 Compatível com cache do TanStack Query
-- ✅ Mantém hook original para charts (backward compatibility)
-
-### Próximos Passos para Ativação
-1. Atualizar `dashboard-content.tsx` para usar `useGlucoseReadingsPaginated`
-2. Ajustar lógica de paginação para usar metadados do servidor
-3. Testar com datasets grandes (>1000 registros)
+#### 1.2 Manter Hook Original para Charts
+```typescript
+// Manter useGlucoseReadings para gráficos (sem paginação)
+// Usado apenas para visualizações que precisam de todo o dataset
+```
 
 ---
 
 ## 🖥️ Fase 2: Virtualização de Tabelas
 
-### Implementações Realizadas
+### Análise de Impacto
+- **Arquivos Afetados**:
+  - `components/glucose-table.tsx` (refatoração significativa)
+  - `components/glucose-table-medical.tsx` (refatoração significativa)
+  
+- **Dependência**: `@tanstack/react-virtual` (já compatível com TanStack Query)
 
-#### 2.1 Dependência Instalada
+### Implementação
+
+#### 2.1 Instalar Dependência
 ```bash
-✅ @tanstack/react-virtual instalado
+npm install @tanstack/react-virtual
 ```
 
-### Próximos Passos para Implementação
-1. Refatorar `glucose-table.tsx`:
-   - Adicionar `useVirtualizer`
-   - Implementar scroll virtual
-   - Manter acessibilidade (keyboard navigation)
-
-2. Refatorar `glucose-table-medical.tsx`:
-   - Aplicar mesma virtualização
-   - Adaptar para visualização médica
-
-**Exemplo de Implementação:**
+#### 2.2 Refatorar GlucoseTable
 ```typescript
-const rowVirtualizer = useVirtualizer({
-  count: readings.length,
-  getScrollElement: () => parentRef.current,
-  estimateSize: () => 60,
-  overscan: 5
-})
-```
+import { useVirtualizer } from '@tanstack/react-virtual'
 
-**Benefícios Esperados:**
-- 📉 95% redução em DOM nodes
-- ⚡ Scroll suave mesmo com milhares de registros
-- 💾 Menor uso de memória
+export function GlucoseTable({ readings, ... }) {
+  const parentRef = useRef<HTMLDivElement>(null)
+  
+  const rowVirtualizer = useVirtualizer({
+    count: readings.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 60, // altura estimada da linha
+    overscan: 5 // renderizar 5 itens extras fora da viewport
+  })
+  
+  return (
+    <div ref={parentRef} style={{ height: '600px', overflow: 'auto' }}>
+      <div style={{ height: `${rowVirtualizer.getTotalSize()}px` }}>
+        {rowVirtualizer.getVirtualItems().map(virtualRow => {
+          const reading = readings[virtualRow.index]
+          return (
+            <div
+              key={reading.id}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: `${virtualRow.size}px`,
+                transform: `translateY(${virtualRow.start}px)`
+              }}
+            >
+              {/* Conteúdo da linha */}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+```
 
 ---
 
 ## 🔒 Fase 3: LGPD Compliance
 
-### ✅ Implementações Completas
+### Análise de Impacto
+- **Arquivos Novos**:
+  - `app/privacy/page.tsx` (nova página)
+  - `app/terms/page.tsx` (nova página)
+  - `components/lgpd-consent-modal.tsx` (novo componente)
+  - `components/data-export-dialog.tsx` (novo componente)
+  - `scripts/006_lgpd_compliance.sql` (novo script)
+  
+- **Arquivos Modificados**:
+  - `app/layout.tsx` (adicionar modal de consentimento)
+  - `components/settings-modal.tsx` (adicionar opções LGPD)
 
-#### 3.1 Script SQL de Compliance
-**Arquivo:** `scripts/006_lgpd_compliance.sql`
+### Implementação
 
-**Tabelas Criadas:**
-- ✅ `user_consents` - Armazena consentimentos do usuário
-  - Tipos: terms, privacy, data_processing, marketing
-  - Versionamento de consentimentos
-  - Rastreamento de IP e User Agent
-  - Suporte a revogação
+#### 3.1 Criar Tabelas de Auditoria
+```sql
+-- scripts/006_lgpd_compliance.sql
+CREATE TABLE IF NOT EXISTS user_consents (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  consent_type TEXT NOT NULL, -- 'terms', 'privacy', 'data_processing'
+  consent_given BOOLEAN NOT NULL,
+  consent_date TIMESTAMPTZ DEFAULT NOW(),
+  ip_address TEXT,
+  user_agent TEXT
+);
 
-- ✅ `audit_logs` - Logs de auditoria
-  - Ações: create, read, update, delete, export, login, logout
-  - Armazena old_data e new_data (JSONB)
-  - Índices otimizados para queries
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  action TEXT NOT NULL, -- 'create', 'read', 'update', 'delete'
+  table_name TEXT NOT NULL,
+  record_id UUID,
+  old_data JSONB,
+  new_data JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  ip_address TEXT
+);
 
-**Funções SQL Criadas:**
-- ✅ `log_audit_trail()` - Trigger automático para auditoria
-- ✅ `export_user_data(p_user_id)` - Exporta todos os dados (JSONB)
-- ✅ `delete_user_data_gdpr(p_user_id)` - Direito ao esquecimento
-- ✅ `check_user_consent(p_user_id, p_consent_type)` - Verifica consentimento
+-- Índices para performance
+CREATE INDEX idx_user_consents_user_id ON user_consents(user_id);
+CREATE INDEX idx_audit_logs_user_id ON audit_logs(user_id);
+CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at);
+```
 
-**Triggers Aplicados:**
-- ✅ glucose_readings
-- ✅ meals
-- ✅ medications
-- ✅ doctors
-- ✅ medical_appointments
-- ✅ user_profiles
+#### 3.2 Componente de Consentimento
+```typescript
+// components/lgpd-consent-modal.tsx
+export function LGPDConsentModal() {
+  const [consents, setConsents] = useState({
+    terms: false,
+    privacy: false,
+    dataProcessing: false
+  })
+  
+  // Verificar se usuário já deu consentimento
+  // Exibir modal apenas se necessário
+  
+  return (
+    <Dialog open={!hasConsent}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Consentimento de Uso de Dados</DialogTitle>
+        </DialogHeader>
+        
+        <div className="space-y-4">
+          <div className="flex items-start gap-3">
+            <Checkbox 
+              checked={consents.terms}
+              onCheckedChange={(checked) => 
+                setConsents(prev => ({ ...prev, terms: checked as boolean }))
+              }
+            />
+            <div>
+              <Label>Aceito os Termos de Uso</Label>
+              <Link href="/terms" className="text-sm text-primary">
+                Ler termos completos
+              </Link>
+            </div>
+          </div>
+          
+          {/* Outros consentimentos... */}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+```
 
-**RLS Policies:**
-- ✅ Usuários só acessam seus próprios dados
-- ✅ Logs de auditoria protegidos
+#### 3.3 Exportação de Dados (Direito à Portabilidade)
+```typescript
+// components/data-export-dialog.tsx
+export function DataExportDialog() {
+  const handleExport = async () => {
+    const response = await fetch('/api/user/export-data', {
+      method: 'POST'
+    })
+    
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `meus-dados-${new Date().toISOString()}.json`
+    a.click()
+  }
+  
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="outline">Exportar Meus Dados</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Exportar Dados Pessoais</DialogTitle>
+          <DialogDescription>
+            Você receberá um arquivo JSON com todos os seus dados armazenados.
+          </DialogDescription>
+        </DialogHeader>
+        <Button onClick={handleExport}>Baixar Dados</Button>
+      </DialogContent>
+    </Dialog>
+  )
+}
+```
 
-#### 3.2 Componentes React
+#### 3.4 Direito ao Esquecimento
+```typescript
+// Adicionar em settings-modal.tsx
+const handleDeleteAccount = async () => {
+  if (confirm('Tem certeza? Esta ação é irreversível.')) {
+    await supabase.rpc('delete_user_data_gdpr', { user_id: userId })
+    await supabase.auth.signOut()
+    router.push('/')
+  }
+}
+```
 
-**Modal de Consentimento:**
-**Arquivo:** `components/lgpd-consent-modal.tsx`
-
-- ✅ Verificação automática de consentimentos
-- ✅ 4 tipos de consentimento (3 obrigatórios, 1 opcional)
-- ✅ Links para Termos e Privacidade
-- ✅ Validação de consentimentos obrigatórios
-- ✅ Persistência no Supabase
-- ✅ Não pode ser fechado sem aceitar (onInteractOutside prevented)
-
-**Exportação de Dados:**
-**Arquivo:** `components/data-export-dialog.tsx`
-
-- ✅ Exporta todos os dados em JSON
-- ✅ Usa função RPC `export_user_data`
-- ✅ Download automático
-- ✅ Registra auditoria da exportação
-- ✅ Feedback visual de sucesso
-
-**Exclusão de Conta:**
-**Arquivo:** `components/delete-account-dialog.tsx`
-
-- ✅ Confirmação dupla (texto "EXCLUIR MEUS DADOS")
-- ✅ Lista detalhada do que será excluído
-- ✅ Usa função RPC `delete_user_data_gdpr`
-- ✅ Logout automático após exclusão
-- ✅ Avisos claros sobre irreversibilidade
-
-#### 3.3 Páginas Legais
-
-**Termos de Uso:**
-**Arquivo:** `app/terms/page.tsx`
-
-- ✅ 11 seções completas
-- ✅ Uso adequado e responsabilidades
-- ✅ Limitações de responsabilidade
-- ✅ Propriedade intelectual
-- ✅ Lei aplicável (Brasil)
-
-**Política de Privacidade:**
-**Arquivo:** `app/privacy/page.tsx`
-
-- ✅ Conformidade LGPD completa
-- ✅ Detalhamento de dados coletados
-- ✅ Finalidades do tratamento
-- ✅ Medidas de segurança
-- ✅ Direitos do usuário (Art. 18)
-- ✅ Informações sobre DPO
-- ✅ Link para ANPD
-
-#### 3.4 Integração no Sistema
-
-**Modal de Configurações:**
-**Arquivo:** `components/configuracoes-modal.tsx`
-
-- ✅ Nova seção "Privacidade e Dados (LGPD)"
-- ✅ Links para Termos e Privacidade
-- ✅ Botões de Exportação e Exclusão
-- ✅ Informações sobre direitos LGPD
-
-**Layout do Dashboard:**
-**Arquivo:** `app/dashboard/layout.tsx`
-
-- ✅ Modal de consentimento carrega automaticamente
-- ✅ Verifica consentimentos ao entrar no sistema
-- ✅ Bloqueia uso sem consentimentos obrigatórios
-
----
-
-## 📊 Métricas de Sucesso
-
-### Performance (Projetado)
-
-#### Server-Side Pagination
-| Métrica | Antes | Depois | Melhoria |
-|---------|-------|--------|----------|
-| Registros carregados | 90 dias (~1000+) | 15 por página | 98% redução |
-| Tempo de query | 500ms | 50ms | 90% redução |
-| Payload inicial | ~200KB | ~20KB | 90% redução |
-
-#### Virtualização
-| Métrica | Antes | Depois | Melhoria |
-|---------|-------|--------|----------|
-| DOM nodes (1000 registros) | 5000+ | 250 | 95% redução |
-| Memória usada | 500KB | 50KB | 90% redução |
-| Scroll performance | Lag perceptível | Suave | ✅ |
-
-### LGPD Compliance
-
-| Requisito | Status | Implementação |
-|-----------|--------|---------------|
-| Consentimento Explícito | ✅ | Modal obrigatório |
-| Direito à Portabilidade | ✅ | Exportação JSON |
-| Direito ao Esquecimento | ✅ | Exclusão completa |
-| Auditoria | ✅ | Logs automáticos |
-| Política de Privacidade | ✅ | Página completa |
-| Termos de Uso | ✅ | Página completa |
-
----
-
-## ⚠️ Ações Necessárias
-
-### Imediatas (Antes de Usar em Produção)
-
-1. **Executar Script SQL:**
-   ```bash
-   # No Supabase SQL Editor:
-   # 1. Abrir scripts/006_lgpd_compliance.sql
-   # 2. Executar todo o script
-   # 3. Verificar criação de tabelas e funções
-   ```
-
-2. **Revisar Textos Legais:**
-   - [ ] Consultar jurídico para validar Termos de Uso
-   - [ ] Consultar jurídico para validar Política de Privacidade
-   - [ ] Atualizar e-mail do DPO em `app/privacy/page.tsx`
-
-3. **Testar Fluxo LGPD:**
-   - [ ] Criar novo usuário
-   - [ ] Verificar modal de consentimento
-   - [ ] Testar exportação de dados
-   - [ ] Testar exclusão de conta (em ambiente de dev)
-
-### Próximas Iterações
-
-4. **Ativar Server-Side Pagination:**
-   - [ ] Refatorar `dashboard-content.tsx`
-   - [ ] Testar com diferentes filtros
-   - [ ] Validar performance
-
-5. **Implementar Virtualização:**
-   - [ ] Refatorar `glucose-table.tsx`
-   - [ ] Refatorar `glucose-table-medical.tsx`
-   - [ ] Testar acessibilidade
-
-6. **Testes:**
-   - [ ] Criar testes unitários para hooks LGPD
-   - [ ] Criar testes E2E para fluxo de consentimento
-   - [ ] Testar performance com datasets grandes
+```sql
+-- Função para deletar todos os dados do usuário
+CREATE OR REPLACE FUNCTION delete_user_data_gdpr(p_user_id UUID)
+RETURNS VOID AS $$
+BEGIN
+  -- Deletar em ordem de dependências
+  DELETE FROM glucose_readings WHERE user_id = p_user_id;
+  DELETE FROM meals WHERE user_id = p_user_id;
+  DELETE FROM medications WHERE user_id = p_user_id;
+  DELETE FROM doctors WHERE user_id = p_user_id;
+  DELETE FROM medical_appointments WHERE user_id = p_user_id;
+  DELETE FROM user_profiles WHERE id = p_user_id;
+  DELETE FROM audit_logs WHERE user_id = p_user_id;
+  DELETE FROM user_consents WHERE user_id = p_user_id;
+  
+  -- Deletar usuário do auth
+  DELETE FROM auth.users WHERE id = p_user_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
 
 ---
 
-## 📁 Arquivos Criados/Modificados
+## ✅ Checklist de Implementação
 
-### Novos Arquivos (10)
-1. `scripts/006_lgpd_compliance.sql`
-2. `components/lgpd-consent-modal.tsx`
-3. `components/data-export-dialog.tsx`
-4. `components/delete-account-dialog.tsx`
-5. `app/terms/page.tsx`
-6. `app/privacy/page.tsx`
-7. `.agent/workflows/implementacao-melhorias-criticas.md`
+### Fase 1: Server-Side Pagination
+- [ ] Criar novo hook `useGlucoseReadingsPaginated`
+- [ ] Atualizar `dashboard-content.tsx` para usar novo hook
+- [ ] Manter hook original para charts
+- [ ] Testar paginação com diferentes filtros
+- [ ] Verificar performance com datasets grandes
 
-### Arquivos Modificados (3)
-1. `hooks/use-glucose.ts` - Adicionado `useGlucoseReadingsPaginated`
-2. `components/configuracoes-modal.tsx` - Adicionada seção LGPD
-3. `app/dashboard/layout.tsx` - Adicionado `LGPDConsentModal`
+### Fase 2: Virtualização
+- [ ] Instalar `@tanstack/react-virtual`
+- [ ] Refatorar `glucose-table.tsx`
+- [ ] Refatorar `glucose-table-medical.tsx`
+- [ ] Testar scroll e performance
+- [ ] Garantir acessibilidade (keyboard navigation)
 
-### Dependências Adicionadas (1)
-1. `@tanstack/react-virtual` - Para virtualização de tabelas
-
----
-
-## 🎯 Próximos Passos Recomendados
-
-### Semana 1 (Compliance)
-1. ✅ Executar script SQL no Supabase
-2. ✅ Revisar textos legais com jurídico
-3. ✅ Testar fluxo completo de LGPD
-4. ✅ Atualizar e-mail do DPO
-
-### Semana 2 (Performance)
-1. ⏳ Ativar server-side pagination
-2. ⏳ Implementar virtualização de tabelas
-3. ⏳ Testes de performance
-4. ⏳ Ajustes finos
-
-### Semana 3 (Testes e Documentação)
-1. ⏳ Criar testes automatizados
-2. ⏳ Documentar APIs LGPD
-3. ⏳ Treinamento da equipe
-4. ⏳ Preparar para produção
+### Fase 3: LGPD
+- [ ] Criar script SQL de compliance
+- [ ] Executar migrations no Supabase
+- [ ] Criar páginas de Termos e Privacidade
+- [ ] Implementar modal de consentimento
+- [ ] Adicionar exportação de dados
+- [ ] Implementar direito ao esquecimento
+- [ ] Criar logs de auditoria
+- [ ] Testar fluxo completo
 
 ---
 
-## 🔍 Observações Importantes
+## 🧪 Testes Necessários
 
-### Cuidados Especiais
+### Testes de Paginação
+```typescript
+describe('Server-Side Pagination', () => {
+  it('should fetch correct page of data', async () => {
+    const { result } = renderHook(() => 
+      useGlucoseReadingsPaginated({ userId: 'test', page: 2, limit: 15 })
+    )
+    
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(result.current.data.pagination.page).toBe(2)
+  })
+})
+```
 
-1. **Backward Compatibility:**
-   - ✅ Hook original `useGlucoseReadings` mantido
-   - ✅ Componentes existentes não foram quebrados
-   - ✅ Migração gradual possível
-
-2. **Segurança:**
-   - ✅ RLS policies aplicadas
-   - ✅ Dados sensíveis protegidos
-   - ✅ Auditoria automática
-
-3. **Performance:**
-   - ✅ Queries otimizadas
-   - ✅ Índices criados
-   - ✅ Cache configurado
-
-4. **UX:**
-   - ✅ Feedback visual em todas as ações
-   - ✅ Confirmações para ações destrutivas
-   - ✅ Mensagens claras e informativas
-
----
-
-## 📞 Suporte
-
-Para dúvidas sobre a implementação:
-- Consultar workflow: `.agent/workflows/implementacao-melhorias-criticas.md`
-- Revisar este relatório
-- Verificar comentários no código
+### Testes de LGPD
+```typescript
+describe('LGPD Compliance', () => {
+  it('should show consent modal for new users', () => {
+    render(<LGPDConsentModal />)
+    expect(screen.getByText('Consentimento de Uso de Dados')).toBeInTheDocument()
+  })
+  
+  it('should export user data', async () => {
+    // Test data export functionality
+  })
+})
+```
 
 ---
 
-**Implementação realizada com sucesso! ✅**
+## 📈 Métricas de Sucesso
 
-*Sistema pronto para revisão e testes antes do deploy em produção.*
+### Performance
+- **Antes**: 500ms para carregar 5000 registros
+- **Meta**: 50ms para carregar 15 registros (página)
+- **Redução**: 90%
+
+### DOM Nodes
+- **Antes**: 5000 nodes para 1000 registros
+- **Meta**: 250 nodes (apenas visíveis)
+- **Redução**: 95%
+
+### Compliance
+- **Antes**: 0% compliance LGPD
+- **Meta**: 100% compliance
+- **Funcionalidades**: Consentimento, Exportação, Esquecimento, Auditoria
+
+---
+
+## ⚠️ Cuidados Especiais
+
+1. **Backward Compatibility**: Manter hook original para não quebrar charts
+2. **Cache Invalidation**: Garantir que paginação não quebre cache do TanStack Query
+3. **Acessibilidade**: Virtualização não deve prejudicar navegação por teclado
+4. **LGPD**: Consultar jurídico para textos de Termos e Privacidade
+5. **Testes**: Testar cada fase isoladamente antes de integrar
+
+---
+
+*Plano criado em 16/12/2025*
