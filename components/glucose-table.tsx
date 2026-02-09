@@ -101,6 +101,57 @@ function getStatusBadge(status: GlucoseStatus) {
   )
 }
 
+import { memo } from "react"
+
+const TableRow = memo(function TableRow({
+  reading,
+  onEdit,
+  onDelete,
+  limits
+}: {
+  reading: GlucoseReading
+  onEdit: (r: GlucoseReading) => void
+  onDelete: () => void
+  limits?: GlucoseLimits
+}) {
+  const status = getGlucoseStatus(reading.reading_value, reading.condition, limits)
+  const [year, month, day] = reading.reading_date.split("-")
+  const formattedDate = `${day}/${month}/${year}`
+  const formattedTime = reading.reading_time.slice(0, 5)
+
+  return (
+    <tr className="hover:bg-muted/50">
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="text-sm font-medium text-foreground">{formattedDate}</div>
+        <div className="text-sm text-muted-foreground">{formattedTime}</div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="flex items-center gap-2">
+          {getConditionIcon(reading.condition)}
+          <span className="text-sm text-foreground">
+            {getConditionLabel(reading.condition, reading.reading_time)}
+          </span>
+        </div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">
+        <div className="text-sm font-bold text-foreground">{reading.reading_value} mg/dL</div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(status)}</td>
+      <td className="px-6 py-4">
+        <div className="text-sm text-muted-foreground max-w-xs truncate">{reading.observations || "-"}</div>
+      </td>
+      <td className="px-6 py-4 whitespace-nowrap text-right">
+        <div className="flex items-center justify-end gap-2">
+          <Button variant="ghost" size="icon" onClick={() => onEdit(reading)} aria-label="Editar registro">
+            <Pencil className="w-4 h-4" />
+          </Button>
+          <DeleteReadingButton readingId={reading.id} onDataChange={onDelete} />
+        </div>
+      </td>
+    </tr>
+  )
+})
+
 export function GlucoseTable({
   // ... (existing props)
   readings,
@@ -230,44 +281,15 @@ export function GlucoseTable({
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {readings.map((reading) => {
-                  const status = getGlucoseStatus(reading.reading_value, reading.condition, limits)
-                  const [year, month, day] = reading.reading_date.split("-")
-                  const formattedDate = `${day}/${month}/${year}`
-                  const formattedTime = reading.reading_time.slice(0, 5)
-
-                  return (
-                    <tr key={reading.id} className="hover:bg-muted/50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-foreground">{formattedDate}</div>
-                        <div className="text-sm text-muted-foreground">{formattedTime}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          {getConditionIcon(reading.condition)}
-                          <span className="text-sm text-foreground">
-                            {getConditionLabel(reading.condition, reading.reading_time)}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-bold text-foreground">{reading.reading_value} mg/dL</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(status)}</td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-muted-foreground max-w-xs truncate">{reading.observations || "-"}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button variant="ghost" size="icon" onClick={() => handleEdit(reading)} aria-label="Editar registro">
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          <DeleteReadingButton readingId={reading.id} onDataChange={onDataChange} />
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
+                {readings.map((reading) => (
+                  <TableRow
+                    key={reading.id}
+                    reading={reading}
+                    onEdit={handleEdit}
+                    onDelete={onDataChange}
+                    limits={limits}
+                  />
+                ))}
               </tbody>
             </table>
           </div>

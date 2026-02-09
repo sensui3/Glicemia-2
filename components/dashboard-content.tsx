@@ -9,7 +9,11 @@ import { DashboardClient } from "@/components/dashboard-client"
 import { MedicacoesWidget } from "@/components/medicacoes-widget"
 import { MedicalCalendar } from "@/components/medical-calendar"
 // import { useGlucoseData } from "@/hooks/use-glucose-data" // Refactored
-import { useGlucoseReadings, useGlucoseReadingsPaginated, useSubscribeToGlucose, GLUCOSE_KEYS } from "@/hooks/use-glucose"
+import { useSubscribeToGlucose, GLUCOSE_KEYS } from "@/hooks/use-glucose"
+import {
+  useGlucoseUnified,
+  type UnifiedOptions,
+} from "@/hooks/use-glucose-unified"
 import { useUserProfile } from "@/hooks/use-user-profile"
 import type { GlucoseReading } from "@/lib/types"
 import { format, parseISO, subDays, isAfter } from "date-fns"
@@ -61,34 +65,26 @@ export function DashboardContent({
 
   const ITEMS_PER_PAGE = 15
 
-  // Fetch Logic: Always fetch at least 90 days to populate the chart history, unless custom range is selected.
-  const fetchFilter = filter === "custom" ? "custom" : "90days"
-
-  // Fetch Summary Data (90 days) for Chart and Stats
-  const { data: allFetchedReadings = [], isLoading: isChartLoading } = useGlucoseReadings({
-    userId,
-    filter: fetchFilter,
-    startDate,
-    endDate,
-    periodFilter,
-    tagFilter,
-  })
-
-  // Fetch Paginated Data for Table (Server-side)
-  const { data: paginatedResponse, isLoading: isTableLoading } = useGlucoseReadingsPaginated({
+  // Fetch Logic: Unified Hook
+  const {
+    readings: paginatedReadings,
+    pagination,
+    chartData: allFetchedReadings,
+    stats,
+    isLoading
+  } = useGlucoseUnified({
     userId,
     page,
     limit: ITEMS_PER_PAGE,
     filter,
-    periodFilter,
-    tagFilter,
     startDate,
     endDate,
-    sortBy: 'reading_date',
+    periodFilter,
+    tagFilter,
     sortOrder,
+    includeChartData: true,
+    chartDays: filter === 'custom' ? undefined : 90
   })
-
-  const isLoading = isChartLoading || isTableLoading
 
   // Fetch User Preferences (Limits) using Hook
   const { data: userProfile } = useUserProfile(userId)
@@ -101,10 +97,13 @@ export function DashboardContent({
     let totalItems = 0
 
     if (viewMode === "medical") {
-      // In Medical View, we still use client-side logic from the 90-day pool
-      // because server-side date grouping with pagination is complex.
-      // 1. Filter by UI Filter
+      // Logic for Medical View (Client-side filtering/pagination on full dataset 'allFetchedReadings')
       let filteredForMedical = [...allFetchedReadings]
+
+      // Filter Logic
+      // Note: Unified Hook filters chartData by Date Range ONLY. 
+      // We need to re-apply UI filters (today/7days specific logic inside 90day pool) and other filters.
+
       if (filter !== "custom" && filter !== "90days") {
         const now = new Date()
         let daysToSub = 90
@@ -124,12 +123,31 @@ export function DashboardContent({
         }
       }
 
+      // Re-apply Period and Tag filters for Medical View
+      if (periodFilter !== "all") {
+        if (periodFilter === "morning") {
+          filteredForMedical = filteredForMedical.filter(r => r.reading_time >= "06:00:00" && r.reading_time < "12:00:00")
+        } else if (periodFilter === "afternoon") {
+          filteredForMedical = filteredForMedical.filter(r => r.reading_time >= "12:00:00" && r.reading_time < "18:00:00")
+        } else if (periodFilter === "night") {
+          filteredForMedical = filteredForMedical.filter(r => r.reading_time >= "18:00:00" || r.reading_time < "06:00:00")
+        }
+      }
+
+      if (tagFilter !== "all") {
+        if (tagFilter === "insulin") filteredForMedical = filteredForMedical.filter(r => r.observations?.toLowerCase().includes("insulina") || false)
+        if (tagFilter === "hypo") filteredForMedical = filteredForMedical.filter(r => r.reading_value < 70)
+        if (tagFilter === "hyper") filteredForMedical = filteredForMedical.filter(r => r.reading_value > 180)
+      }
+
+      // Sort
       const sorted = [...filteredForMedical].sort((a, b) => {
         const dateA = a.reading_date + a.reading_time
         const dateB = b.reading_date + b.reading_time
         return sortOrder === "asc" ? dateA.localeCompare(dateB) : dateB.localeCompare(dateA)
       })
 
+      // Pagination (Client-side)
       const uniqueDates = Array.from(new Set(sorted.map(r => r.reading_date)))
       totalItems = uniqueDates.length
       totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE)
@@ -138,21 +156,39 @@ export function DashboardContent({
       const pageDates = uniqueDates.slice(startIdx, startIdx + ITEMS_PER_PAGE)
       currentReadings = sorted.filter((r: GlucoseReading) => pageDates.includes(r.reading_date))
     } else {
-      // Standard View: Use the precision server-side paginated data
-      currentReadings = paginatedResponse?.data || []
-      totalItems = paginatedResponse?.pagination.total || 0
-      totalPages = paginatedResponse?.pagination.totalPages || 0
+      // Standard View: Use Server-side paginated data from Hook
+      currentReadings = paginatedReadings
+      totalItems = pagination?.total || 0
+      totalPages = pagination?.totalPages || 0
     }
 
-    // CHART DATA: Always use up to 90 days pool
-    const chartReadings = [...allFetchedReadings].sort((a, b) => {
+    // CHART DATA LOGIC
+    // Apply visual filters (period/tag) to chart data as well for consistency
+    let chartReadingsFiltered = [...(allFetchedReadings || [])]
+
+    if (periodFilter !== "all") {
+      if (periodFilter === "morning") {
+        chartReadingsFiltered = chartReadingsFiltered.filter(r => r.reading_time >= "06:00:00" && r.reading_time < "12:00:00")
+      } else if (periodFilter === "afternoon") {
+        chartReadingsFiltered = chartReadingsFiltered.filter(r => r.reading_time >= "12:00:00" && r.reading_time < "18:00:00")
+      } else if (periodFilter === "night") {
+        chartReadingsFiltered = chartReadingsFiltered.filter(r => r.reading_time >= "18:00:00" || r.reading_time < "06:00:00")
+      }
+    }
+    if (tagFilter !== "all") {
+      if (tagFilter === "insulin") chartReadingsFiltered = chartReadingsFiltered.filter(r => r.observations?.toLowerCase().includes("insulina") || false)
+      if (tagFilter === "hypo") chartReadingsFiltered = chartReadingsFiltered.filter(r => r.reading_value < 70)
+      if (tagFilter === "hyper") chartReadingsFiltered = chartReadingsFiltered.filter(r => r.reading_value > 180)
+    }
+
+    const chartReadings = chartReadingsFiltered.sort((a, b) => {
       const dateA = a.reading_date + a.reading_time
       const dateB = b.reading_date + b.reading_time
       return dateA.localeCompare(dateB)
     })
 
-    // QUICK VIEW: Last 5 readings
-    const last5Readings = [...allFetchedReadings].sort((a, b) => {
+    // QUICK VIEW
+    const last5Readings = [...chartReadingsFiltered].sort((a, b) => {
       const dateA = a.reading_date + a.reading_time
       const dateB = b.reading_date + b.reading_time
       return dateB.localeCompare(dateA)
@@ -165,13 +201,16 @@ export function DashboardContent({
       totalPages,
       totalItems
     }
-  }, [allFetchedReadings, paginatedResponse, filter, viewMode, page, sortOrder, ITEMS_PER_PAGE])
+  }, [allFetchedReadings, paginatedReadings, pagination, filter, viewMode, page, sortOrder, ITEMS_PER_PAGE, periodFilter, tagFilter])
 
   const { readings, chartReadings, last5Readings, totalPages, totalItems } = processedData
 
   // Handlers
   const handleDataChange = useCallback(async () => {
-    // Smart invalidation
+    // Smart invalidation for new unified hooks
+    await queryClient.invalidateQueries({ queryKey: ['glucose', 'table'] })
+    await queryClient.invalidateQueries({ queryKey: ['glucose', 'chart-stats'] })
+    // Legacy invalidation just in case other components use old hooks
     await queryClient.invalidateQueries({ queryKey: GLUCOSE_KEYS.lists() })
     setStatsKey((prev: number) => prev + 1)
   }, [queryClient, setStatsKey])
@@ -235,7 +274,7 @@ export function DashboardContent({
 
           {/* Block A: KPI Stats */}
           <section>
-            <GlucoseStats userId={userId} refreshKey={statsKey} />
+            <GlucoseStats userId={userId} refreshKey={statsKey} preCalculatedStats={stats} />
           </section>
 
           {/* Block B: Main Chart (Lazy Loaded) */}
@@ -247,7 +286,7 @@ export function DashboardContent({
           <section className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
             <div className="lg:col-span-2 space-y-8">
               {/* Food Stats */}
-              <FoodStatsWidget userId={userId} filter={fetchFilter} startDate={startDate} endDate={endDate} />
+              <FoodStatsWidget userId={userId} filter={filter} startDate={startDate} endDate={endDate} />
 
               {/* Recent Readings Card */}
               <div className="bg-card rounded-xl border shadow-sm p-6">

@@ -15,10 +15,12 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import type { GlucoseReading } from "@/lib/types"
+import type { GlucoseStatsData } from "@/hooks/use-glucose-unified"
 
 type Props = {
   userId: string
   refreshKey?: number
+  preCalculatedStats?: GlucoseStatsData
 }
 
 type Hba1cPoint = {
@@ -27,7 +29,7 @@ type Hba1cPoint = {
   formattedDate: string
 }
 
-export function GlucoseStats({ userId, refreshKey }: Props) {
+export function GlucoseStats({ userId, refreshKey, preCalculatedStats }: Props) {
   const [average, setAverage] = useState(0)
   const [highest, setHighest] = useState<any>(null)
   const [lowest, setLowest] = useState<any>(null)
@@ -35,29 +37,29 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
   const [timeInRange, setTimeInRange] = useState(0)
   const [hba1c, setHba1c] = useState<string | number>(0)
   const [hba1cHistory, setHba1cHistory] = useState<Hba1cPoint[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!preCalculatedStats)
 
   useEffect(() => {
+    if (preCalculatedStats) {
+      setLoading(false)
+      return
+    }
     void loadStats()
-  }, [userId, refreshKey])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, refreshKey, preCalculatedStats])
 
   const loadStats = async () => {
     setLoading(true)
     const supabase = createClient()
-
     const now = new Date()
 
     // Datas de corte
     const sevenDaysAgo = new Date()
     sevenDaysAgo.setDate(now.getDate() - 7)
-
     const fourteenDaysAgo = new Date()
     fourteenDaysAgo.setDate(now.getDate() - 14)
-
-    // Para o cálculo detalhado de histórico, precisamos de mais dados (ex: 6 meses + 90 dias de janela)
     const oneEightyDaysAgo = new Date()
     oneEightyDaysAgo.setDate(now.getDate() - 180)
-
     const ninetyDaysAgo = new Date()
     ninetyDaysAgo.setDate(now.getDate() - 90)
 
@@ -75,20 +77,17 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
     // Filtrar dados para 7 dias (para Média, Alta, Baixa)
     const sevenDayReadings = allReadings.filter((r: GlucoseReading) => new Date(r.reading_date) >= sevenDaysAgo)
 
-    // Calcular média dos últimos 7 dias
     const avg =
       sevenDayReadings.length > 0
         ? Math.round(sevenDayReadings.reduce((sum: number, r: GlucoseReading) => sum + r.reading_value, 0) / sevenDayReadings.length)
         : 0
     setAverage(avg)
 
-    // Calcular Time in Range (70-180 mg/dL)
     const inRange = sevenDayReadings.filter((r: GlucoseReading) => r.reading_value >= 70 && r.reading_value <= 180).length
     const total = sevenDayReadings.length
     const tir = total > 0 ? Math.round((inRange / total) * 100) : 0
     setTimeInRange(tir)
 
-    // Encontrar maior e menor leitura (nos últimos 7 dias)
     const high =
       sevenDayReadings.length > 0
         ? sevenDayReadings.reduce((max: GlucoseReading, r: GlucoseReading) => (r.reading_value > max.reading_value ? r : max))
@@ -129,21 +128,17 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
 
     // Calcular histórico da HbA1c (pontos semanais para as últimas 12 semanas)
     const history: Hba1cPoint[] = []
-    // Gerar 12 pontos (um a cada semana) até hoje
+
     for (let i = 12; i >= 0; i--) {
       const refDate = new Date()
       refDate.setDate(refDate.getDate() - i * 7)
 
       const windowStart = new Date(refDate)
-      windowStart.setDate(windowStart.getDate() - 90) // Janela de 90 dias para trás da data de referência
+      windowStart.setDate(windowStart.getDate() - 90)
 
-      // Filtrar leituras para essa janela específica [windowStart, refDate]
       const windowReadings = allReadings.filter((r: GlucoseReading) => {
-        const d = new Date(r.reading_date + "T" + r.reading_time) // Adicionar tempo para precisão se necessário, ou só data
-        // Simplificando comparação de datas strings 'YYYY-MM-DD'
-        const rDate = new Date(r.reading_date)
-        // Comparação de datas (ignorando horas para simplificar ou usando timestamp)
-        return rDate <= refDate && rDate >= windowStart
+        const d = new Date(r.reading_date)
+        return d <= refDate && d >= windowStart
       })
 
       if (windowReadings.length > 0) {
@@ -157,9 +152,17 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
       }
     }
     setHba1cHistory(history)
-
     setLoading(false)
   }
+
+  const displayAverage = preCalculatedStats ? preCalculatedStats.average : average
+  const displayHighestValue = preCalculatedStats ? preCalculatedStats.highest : highest?.reading_value
+  const displayLowestValue = preCalculatedStats ? preCalculatedStats.lowest : lowest?.reading_value
+  const displayHba1c = preCalculatedStats ? preCalculatedStats.hba1c : hba1c
+  const displayTimeInRange = preCalculatedStats ? preCalculatedStats.timeInRange : timeInRange
+
+  const displayHighestTime = preCalculatedStats ? null : highest?.reading_time ? `às ${highest.reading_time.slice(0, 5)}` : "hoje"
+  const displayLowestTime = preCalculatedStats ? null : lowest?.reading_time ? lowest.reading_time.slice(0, 5) : "--:--"
 
   if (loading) {
     return (
@@ -185,10 +188,10 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
           </div>
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="text-4xl font-bold font-display tracking-tight">{average}</span>
+          <span className="text-4xl font-bold font-display tracking-tight">{displayAverage}</span>
           <span className="text-lg text-muted-foreground">mg/dL</span>
         </div>
-        {trend !== 0 && (
+        {!preCalculatedStats && trend !== 0 && (
           <div
             className={`flex items-center gap-1 mt-2 text-sm ${trend > 0 ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}
           >
@@ -212,7 +215,7 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
               </div>
             </div>
             <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-bold font-display tracking-tight">{hba1c}</span>
+              <span className="text-4xl font-bold font-display tracking-tight">{displayHba1c}</span>
               <span className="text-lg text-muted-foreground">%</span>
             </div>
             <div className="flex items-center gap-1 mt-2 text-sm text-muted-foreground group-hover:text-purple-600 dark:group-hover:text-purple-400">
@@ -236,8 +239,8 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
                   <AreaChart data={hba1cHistory}>
                     <defs>
                       <linearGradient id="colorA1c" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#9333ea" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#9333ea" stopOpacity={0} />
+                        <stop key="gradient-start" offset="5%" stopColor="#9333ea" stopOpacity={0.3} />
+                        <stop key="gradient-end" offset="95%" stopColor="#9333ea" stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
@@ -273,8 +276,14 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
                   </AreaChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-full text-muted-foreground">
-                  Dados insuficientes para gerar histórico
+                <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-4">
+                  <p>Dados simplificados para otimização.</p>
+                  <button
+                    onClick={() => loadStats()}
+                    className="text-sm underline text-primary hover:text-primary/80"
+                  >
+                    Carregar histórico detalhado
+                  </button>
                 </div>
               )}
             </div>
@@ -298,12 +307,12 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
           </div>
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="text-4xl font-bold font-display tracking-tight">{highest?.reading_value || 0}</span>
+          <span className="text-4xl font-bold font-display tracking-tight">{displayHighestValue || 0}</span>
           <span className="text-lg text-muted-foreground">mg/dL</span>
         </div>
-        {highest && (
+        {displayHighestTime && (
           <p className="text-sm text-muted-foreground mt-2">
-            Registrado {highest.reading_time ? `às ${highest.reading_time.slice(0, 5)}` : "hoje"}
+            Registrado {displayHighestTime}
           </p>
         )}
       </div>
@@ -316,13 +325,13 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
           </div>
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="text-4xl font-bold font-display tracking-tight">{timeInRange}%</span>
+          <span className="text-4xl font-bold font-display tracking-tight">{displayTimeInRange}%</span>
           <span className="text-lg text-muted-foreground">no alvo</span>
         </div>
         <div className="w-full bg-muted rounded-full h-2.5 mt-2">
           <div
-            className={`h-2.5 rounded-full ${timeInRange >= 70 ? 'bg-green-600 dark:bg-green-500' : timeInRange >= 50 ? 'bg-yellow-500 dark:bg-yellow-500' : 'bg-red-500 dark:bg-red-500'}`}
-            style={{ width: `${timeInRange}%` }}
+            className={`h-2.5 rounded-full ${parseFloat(String(displayTimeInRange)) >= 70 ? 'bg-green-600 dark:bg-green-500' : parseFloat(String(displayTimeInRange)) >= 50 ? 'bg-yellow-500 dark:bg-yellow-500' : 'bg-red-500 dark:bg-red-500'}`}
+            style={{ width: `${displayTimeInRange}%` }}
           ></div>
         </div>
         <p className="text-xs text-muted-foreground mt-2">Alvo: &gt;70% (70-180 mg/dL)</p>
@@ -336,12 +345,12 @@ export function GlucoseStats({ userId, refreshKey }: Props) {
           </div>
         </div>
         <div className="flex items-baseline gap-2">
-          <span className="text-4xl font-bold font-display tracking-tight">{lowest?.reading_value || 0}</span>
+          <span className="text-4xl font-bold font-display tracking-tight">{displayLowestValue || 0}</span>
           <span className="text-lg text-muted-foreground">mg/dL</span>
         </div>
-        {lowest && (
+        {displayLowestTime && (
           <p className="text-sm text-muted-foreground mt-2">
-            Registrado {lowest.reading_time ? lowest.reading_time.slice(0, 5) : "--:--"}
+            Registrado {displayLowestTime}
           </p>
         )}
       </div>
