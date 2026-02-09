@@ -70,3 +70,45 @@ export function getStatusBadge(status: GlucoseStatus) {
         </span>
     )
 }
+
+export const groupReadingsByDate = (readings: any[]) => {
+    type DailyReadings = {
+        date: string
+        jejum?: any
+        posCafe?: any
+        preAlmoco?: any
+        posAlmoco?: any
+        preJantar?: any
+        posJantar?: any
+        madrugada?: any
+    }
+
+    const getSlot = (reading: any) => {
+        const { condition, reading_time } = reading
+        const hour = parseInt(reading_time.split(":")[0])
+        if (condition === "jejum") return "jejum"
+        if (condition === "ao_dormir") return "madrugada"
+        if (condition === "antes_refeicao") {
+            if (hour >= 5 && hour < 10) return "jejum"
+            if (hour >= 10 && hour < 14) return "preAlmoco"
+            if (hour >= 14 && hour < 23) return "preJantar"
+        }
+        if (condition === "apos_refeicao") {
+            if (hour >= 5 && hour < 12) return "posCafe"
+            if (hour >= 12 && hour < 16) return "posAlmoco"
+            if (hour >= 16 && hour < 23) return "posJantar"
+        }
+        if (hour >= 0 && hour < 5) return "madrugada"
+        return null
+    }
+
+    const grouped = readings.reduce((acc: any, reading: any) => {
+        const date = reading.reading_date
+        if (!acc[date]) acc[date] = { date }
+        const slot = getSlot(reading)
+        if (slot && !acc[date][slot]) acc[date][slot] = reading
+        return acc
+    }, {} as Record<string, DailyReadings>)
+
+    return Object.values(grouped).sort((a: any, b: any) => b.date.localeCompare(a.date))
+}

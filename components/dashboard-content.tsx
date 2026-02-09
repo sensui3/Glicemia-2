@@ -284,19 +284,19 @@ export function DashboardContent({
 
           {/* Block C: Widgets Grid (Food, Recent Readings, Calendar) */}
           <section className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-            <div className="lg:col-span-2 space-y-8">
+            <div key="left-column" className="lg:col-span-2 space-y-8">
               {/* Food Stats */}
-              <FoodStatsWidget userId={userId} filter={filter} startDate={startDate} endDate={endDate} />
+              <FoodStatsWidget key="food-stats" userId={userId} filter={filter} startDate={startDate} endDate={endDate} />
 
               {/* Recent Readings Card */}
-              <div className="bg-card rounded-xl border shadow-sm p-6">
+              <div key="recent-readings" className="bg-card rounded-xl border shadow-sm p-6">
                 <h3 className="font-semibold text-lg mb-4">Últimas Leituras</h3>
                 <div className="space-y-3">
                   {last5Readings.length === 0 ? (
                     <p className="text-muted-foreground text-sm">Nenhuma leitura recente.</p>
                   ) : (
-                    last5Readings.map((reading) => (
-                      <div key={reading.id} className="flex justify-between items-center p-3 bg-muted/30 rounded-lg border">
+                    last5Readings.map((reading, index) => (
+                      <div key={reading.id || index} className="flex justify-between items-center p-3 bg-muted/30 rounded-lg border">
                         <div>
                           <p className="font-bold text-lg">{reading.reading_value} <span className="text-xs font-normal text-muted-foreground">mg/dL</span></p>
                           <p className="text-xs text-muted-foreground capitalize">{reading.condition.replace('_', ' ')} • {format(parseISO(reading.reading_date), "dd/MM")} {reading.reading_time.slice(0, 5)}</p>
@@ -312,8 +312,8 @@ export function DashboardContent({
             </div>
 
             {/* Right Column: Calendar */}
-            <div className="space-y-8">
-              <MedicalCalendar userId={userId} />
+            <div key="right-column" className="space-y-8">
+              <MedicalCalendar key="calendar" userId={userId} />
             </div>
           </section>
 
