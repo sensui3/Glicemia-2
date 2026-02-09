@@ -25,7 +25,7 @@ export function DashboardClient({ userId, onDataChange, sortOrder }: Props) {
   return (
     <>
       {/* 1-Tap Entry & Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+      <div key="quick-actions" className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
         {/* Giant Button */}
         <Button
           onClick={() => {
@@ -67,7 +67,7 @@ export function DashboardClient({ userId, onDataChange, sortOrder }: Props) {
         </div>
       </div>
 
-      <div className="flex justify-end mb-6">
+      <div key="export-button" className="flex justify-end mb-6">
         <Button
           variant="ghost"
           size="sm"
@@ -80,6 +80,7 @@ export function DashboardClient({ userId, onDataChange, sortOrder }: Props) {
       </div>
 
       <NovoRegistroModal
+        key="novo-registro-modal"
         open={isNovoRegistroOpen}
         onOpenChange={(open) => {
           setIsNovoRegistroOpen(open)
@@ -88,7 +89,7 @@ export function DashboardClient({ userId, onDataChange, sortOrder }: Props) {
         onDataChange={onDataChange}
         initialCondition={activeTemplate}
       />
-      <ExportarDadosModal open={isExportarOpen} onOpenChange={setIsExportarOpen} userId={userId} sortOrder={sortOrder} />
+      <ExportarDadosModal key="exportar-modal" open={isExportarOpen} onOpenChange={setIsExportarOpen} userId={userId} sortOrder={sortOrder} />
     </>
   )
 }

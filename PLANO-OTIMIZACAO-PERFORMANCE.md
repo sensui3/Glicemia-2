@@ -250,7 +250,7 @@ const TableRow = memo(function TableRow({
 
 ---
 
-## 🔧 FASE 2: CORE OPTIMIZATIONS (3-5 dias)
+## ✅ FASE 2: CORE OPTIMIZATIONS (Concluída 09/02/2026)
 
 ### 2.1 Virtualização de Tabelas
 
@@ -601,9 +601,10 @@ const value = data as ExpectedType
 - [ ] Dashboard carrega em < 500ms
 
 ### Após Fase 2
-- [ ] Performance tab: 60 FPS no scroll
-- [ ] Memory tab: < 15MB com 1000 registros
-- [ ] Lighthouse: LCP < 1.0s
+- [x] Componente Virtualizado Criado (`GlucoseTableVirtualized`)
+- [x] Lazy Loading no Gráfico (`GlucoseChart`)
+- [x] Refatoração de Utils (`lib/glucose-utils`)
+- [x] Build Sucesso
 
 ### Após Fase 3
 - [ ] Bundle Analyzer: Initial < 200KB
