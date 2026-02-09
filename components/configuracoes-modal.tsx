@@ -14,8 +14,9 @@ import { Switch } from "@/components/ui/switch"
 import { AlterarSenhaModal } from "./alterar-senha-modal"
 import { DataExportDialog } from "./data-export-dialog"
 import { DeleteAccountDialog } from "./delete-account-dialog"
-import { GlucoseLimits } from "@/lib/types"
+import { GlucoseLimits, GlucoseReading, MealTimes } from "@/lib/types"
 import Link from "next/link"
+import { useMealPreferences } from "@/hooks/use-meal-preferences"
 
 type Props = {
   open: boolean
@@ -44,6 +45,18 @@ export function ConfiguracoesModal({ open, onOpenChange }: Props) {
   const [showPasswordModal, setShowPasswordModal] = useState(false)
 
   const { toast } = useToast()
+  const { mealTimes: userMealTimes, advanceMinutes: userAdvanceMinutes, savePreferences } = useMealPreferences()
+
+  // Estados para horários de refeições
+  const [mealTimes, setMealTimes] = useState<MealTimes>({
+    cafe_manha: "07:30",
+    lanche_manha: "10:00",
+    almoco: "12:00",
+    lanche_tarde: "15:00",
+    jantar: "18:00",
+    lanche_noturno: "21:00"
+  })
+  const [advanceMinutes, setAdvanceMinutes] = useState<number>(45)
 
   useEffect(() => {
     if (open) {
@@ -88,6 +101,12 @@ export function ConfiguracoesModal({ open, onOpenChange }: Props) {
         if (profile.glucose_unit) {
           setGlucoseUnit(profile.glucose_unit)
         }
+        if (profile.meal_times) {
+          setMealTimes(profile.meal_times as MealTimes)
+        }
+        if (profile.meal_advance_minutes !== null && profile.meal_advance_minutes !== undefined) {
+          setAdvanceMinutes(profile.meal_advance_minutes)
+        }
       }
     }
     setIsLoading(false)
@@ -110,6 +129,8 @@ export function ConfiguracoesModal({ open, onOpenChange }: Props) {
         full_name: fullName,
         glucose_limits: limits,
         glucose_unit: glucoseUnit,
+        meal_times: mealTimes,
+        meal_advance_minutes: advanceMinutes,
         updated_at: new Date().toISOString()
       }, { onConflict: 'user_id' })
 
@@ -163,7 +184,7 @@ export function ConfiguracoesModal({ open, onOpenChange }: Props) {
       const headers = ["Data", "Hora", "Valor", "Unidade", "Momento", "Observações"]
       const csvContent = [
         headers.join(","),
-        ...readings.map(r => [
+        ...readings.map((r: GlucoseReading) => [
           r.reading_date,
           r.reading_time,
           r.reading_value,
@@ -331,6 +352,103 @@ export function ConfiguracoesModal({ open, onOpenChange }: Props) {
                     <RotateCcw className="w-3.5 h-3.5 mr-2" />
                     Restaurar Valores Padrão
                   </Button>
+                </div>
+              </section>
+
+              {/* Seção 2.5: Horários de Refeições */}
+              <section className="space-y-4">
+                <div className="flex items-center justify-between border-b pb-2">
+                  <h3 className="font-semibold text-lg text-foreground">Horários de Refeições</h3>
+                </div>
+
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Configure seus horários padrão de refeições. O sistema irá sugerir automaticamente a refeição quando você estiver dentro do período de antecedência.
+                  </p>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label htmlFor="cafe_manha">Café da Manhã</Label>
+                      <Input
+                        id="cafe_manha"
+                        type="time"
+                        value={mealTimes.cafe_manha}
+                        onChange={(e) => setMealTimes({ ...mealTimes, cafe_manha: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label htmlFor="lanche_manha">Lanche da Manhã</Label>
+                      <Input
+                        id="lanche_manha"
+                        type="time"
+                        value={mealTimes.lanche_manha}
+                        onChange={(e) => setMealTimes({ ...mealTimes, lanche_manha: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label htmlFor="almoco">Almoço</Label>
+                      <Input
+                        id="almoco"
+                        type="time"
+                        value={mealTimes.almoco}
+                        onChange={(e) => setMealTimes({ ...mealTimes, almoco: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label htmlFor="lanche_tarde">Lanche da Tarde</Label>
+                      <Input
+                        id="lanche_tarde"
+                        type="time"
+                        value={mealTimes.lanche_tarde}
+                        onChange={(e) => setMealTimes({ ...mealTimes, lanche_tarde: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label htmlFor="jantar">Jantar</Label>
+                      <Input
+                        id="jantar"
+                        type="time"
+                        value={mealTimes.jantar}
+                        onChange={(e) => setMealTimes({ ...mealTimes, jantar: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label htmlFor="lanche_noturno">Lanche Noturno</Label>
+                      <Input
+                        id="lanche_noturno"
+                        type="time"
+                        value={mealTimes.lanche_noturno}
+                        onChange={(e) => setMealTimes({ ...mealTimes, lanche_noturno: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2 pt-2">
+                    <Label htmlFor="advance_minutes">Tempo de Antecedência (minutos)</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        id="advance_minutes"
+                        type="number"
+                        min="15"
+                        max="120"
+                        step="5"
+                        value={advanceMinutes}
+                        onChange={(e) => setAdvanceMinutes(Number(e.target.value))}
+                        className="w-32"
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        minutos antes da refeição
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      O sistema irá sugerir "Antes Refeição" quando você registrar glicemia dentro deste período antes do horário da refeição.
+                    </p>
+                  </div>
                 </div>
               </section>
 

@@ -98,7 +98,7 @@ export function DashboardContent({
 
     if (viewMode === "medical") {
       // Logic for Medical View (Client-side filtering/pagination on full dataset 'allFetchedReadings')
-      let filteredForMedical = [...allFetchedReadings]
+      let filteredForMedical = [...(allFetchedReadings || [])]
 
       // Filter Logic
       // Note: Unified Hook filters chartData by Date Range ONLY. 

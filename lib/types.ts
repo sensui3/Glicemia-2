@@ -29,15 +29,27 @@ export type GlucoseLimits = {
   hyper_limit: number
 }
 
+export type MealTimes = {
+  cafe_manha: string // HH:MM format
+  lanche_manha: string
+  almoco: string
+  lanche_tarde: string
+  jantar: string
+  lanche_noturno: string
+}
+
 export type UserProfile = {
   id: string
   user_id: string
   full_name: string | null
   glucose_limits: GlucoseLimits
   glucose_unit: "mg/dL" | "mmol/L"
+  meal_times?: MealTimes
+  meal_advance_minutes?: number
   created_at: string
   updated_at: string
 }
+
 
 export type GlucoseStatus = "normal" | "alto" | "baixo" | "atencao"
 

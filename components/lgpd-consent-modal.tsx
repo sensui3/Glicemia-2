@@ -104,11 +104,13 @@ export function LGPDConsentModal() {
 
             if (error) throw error
 
+            type UserConsent = { consent_type: string; consent_given: boolean }
+
             // Se não tem consentimentos obrigatórios, mostrar modal
             const hasRequiredConsents = CONSENT_TYPES
                 .filter(c => c.required)
                 .every(c =>
-                    existingConsents?.some(ec =>
+                    existingConsents?.some((ec: UserConsent) =>
                         ec.consent_type === c.type && ec.consent_given
                     )
                 )
@@ -116,7 +118,7 @@ export function LGPDConsentModal() {
             if (!hasRequiredConsents) {
                 // Preencher consentimentos existentes
                 const currentConsents = { ...consents }
-                existingConsents?.forEach(ec => {
+                existingConsents?.forEach((ec: UserConsent) => {
                     currentConsents[ec.consent_type] = ec.consent_given
                 })
                 setConsents(currentConsents)

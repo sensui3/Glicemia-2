@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast"
 import { FoodSearchCombobox } from "@/components/food-search-combobox"
 import { FoodItem } from "@/hooks/use-food-data"
 import { useGlucosePrediction } from "@/hooks/use-glucose-prediction"
+import { useMealPreferences } from "@/hooks/use-meal-preferences"
 
 type Props = {
   open: boolean
@@ -82,6 +83,7 @@ export function NovoRegistroModal({ open, onOpenChange, onDataChange, initialCon
   const [manualCarbs, setManualCarbs] = useState("")
 
   const { predictImpact, prediction, loading: predictionLoading } = useGlucosePrediction()
+  const { detectMealFromTime, getMealTypeSlug, advanceMinutes } = useMealPreferences()
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -99,20 +101,30 @@ export function NovoRegistroModal({ open, onOpenChange, onDataChange, initialCon
   // Effect to handle open state updates (Templates or Auto-fill)
   useEffect(() => {
     if (open) {
+      const currentTime = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", hour12: false })
+
       if (initialCondition) {
         setSelectedCondition(initialCondition)
       } else {
-        // Auto-fill: Try to load last used condition from localStorage
-        // Only if no specific template was requested
-        const lastCondition = localStorage.getItem("last_glucose_condition")
-        if (lastCondition) {
-          setSelectedCondition(lastCondition)
+        // Detecta automaticamente a refeição baseada no horário
+        const mealSuggestion = detectMealFromTime(currentTime)
+
+        // Se estiver dentro da janela de tempo (45min antes da refeição), sugere "antes_refeicao"
+        if (mealSuggestion?.isInWindow) {
+          setSelectedCondition("antes_refeicao")
+          setDetectedMeal(mealSuggestion.mealLabel)
+        } else {
+          // Caso contrário, tenta carregar a última condição usada
+          const lastCondition = localStorage.getItem("last_glucose_condition")
+          if (lastCondition) {
+            setSelectedCondition(lastCondition)
+          }
         }
       }
 
-      // Reset inputs slightly
+      // Reset inputs
       setDate(new Date().toISOString().split("T")[0])
-      setTime(new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", hour12: false }))
+      setTime(currentTime)
       setValue("")
       setObservations("")
       setShowActivity(false)
@@ -120,21 +132,24 @@ export function NovoRegistroModal({ open, onOpenChange, onDataChange, initialCon
       setActivityDuration("")
       setActivityIntensity("")
       setActivityMoment("")
-      setActivityMoment("")
       setSteps("")
       setShowFood(false)
       setSelectedFoods([])
       setManualCarbs("")
     }
-  }, [open, initialCondition])
+  }, [open, initialCondition, detectMealFromTime])
 
+  // Atualiza a refeição detectada quando o horário ou condição mudar
   useEffect(() => {
     if (selectedCondition === "antes_refeicao" || selectedCondition === "apos_refeicao") {
-      setDetectedMeal(getMealFromTime(time))
+      const mealSuggestion = detectMealFromTime(time)
+      if (mealSuggestion) {
+        setDetectedMeal(mealSuggestion.mealLabel)
+      }
     } else {
       setDetectedMeal("")
     }
-  }, [time, selectedCondition])
+  }, [time, selectedCondition, detectMealFromTime])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -172,7 +187,10 @@ export function NovoRegistroModal({ open, onOpenChange, onDataChange, initialCon
         activity_moment: showActivity && activityMoment ? activityMoment : null,
         steps_count: steps ? Number.parseInt(steps) : null,
         // Food fields
-        refeicao_tipo: detectedMeal ? getMealTypeSlug(detectedMeal) : null,
+        refeicao_tipo: detectedMeal ? (() => {
+          const mealSuggestion = detectMealFromTime(time)
+          return mealSuggestion ? getMealTypeSlug(mealSuggestion.mealType) : null
+        })() : null,
         alimentos_consumidos: selectedFoods.map(f => ({
           nome: f.nome,
           porcao_g: f.portion,
@@ -267,6 +285,9 @@ export function NovoRegistroModal({ open, onOpenChange, onDataChange, initialCon
               <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 mt-2">
                 <p className="text-sm text-primary">
                   <span className="font-medium">Refeição detectada:</span> {detectedMeal}
+                </p>
+                <p className="text-xs text-primary/70 mt-1">
+                  Medição {advanceMinutes} minutos antes da refeição
                 </p>
               </div>
             )}
