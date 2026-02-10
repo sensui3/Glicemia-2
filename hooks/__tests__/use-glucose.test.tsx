@@ -1,5 +1,5 @@
 import { renderHook, waitFor } from "@testing-library/react"
-import { useGlucoseReadings, useAddGlucoseReading } from "../use-glucose"
+import { useAddGlucoseReading } from "../use-glucose-unified"
 import { vi, describe, it, expect, beforeEach } from "vitest"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import React from "react"
@@ -33,7 +33,7 @@ mockSelect.mockReturnValue(mockQueryBuilder)
 mockEq.mockReturnValue(mockQueryBuilder)
 mockGte.mockReturnValue(mockQueryBuilder)
 mockLte.mockReturnValue(mockQueryBuilder)
-mockOrder.mockReturnValue(mockQueryBuilder) // This usually returns the promise/result in real life but here we mock the promise at the end of the chain
+mockOrder.mockReturnValue(mockQueryBuilder)
 mockInsert.mockReturnValue(mockQueryBuilder)
 
 vi.mock("@/lib/supabase/client", () => ({
@@ -58,25 +58,6 @@ const queryClient = new QueryClient({
 const wrapper = ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 )
-
-describe("useGlucoseReadings", () => {
-    beforeEach(() => {
-        vi.clearAllMocks()
-        // Setup default success for fetch
-        mockOrder.mockResolvedValue({ data: [{ id: "1", reading_value: 100 }], error: null })
-    })
-
-    it("fetches readings with correct default filters", async () => {
-        const { result } = renderHook(() => useGlucoseReadings({ userId: "user-123" }), { wrapper })
-
-        await waitFor(() => expect(result.current.isSuccess).toBe(true))
-
-        expect(result.current.data).toHaveLength(1)
-        expect(mockEq).toHaveBeenCalledWith("user_id", "user-123")
-        // Check default filter (7days)
-        expect(mockGte).toHaveBeenCalled()
-    })
-})
 
 describe("useAddGlucoseReading", () => {
     beforeEach(() => {

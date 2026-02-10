@@ -1,8 +1,10 @@
 "use client"
 
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
 import { GlucoseReading } from "@/lib/types"
+import { useEffect } from "react"
+import { toast } from "@/components/ui/use-toast"
 
 export type UnifiedOptions = {
     userId: string
@@ -205,4 +207,79 @@ export function useGlucoseUnified(options: UnifiedOptions): UnifiedResponse {
         error,
         refetch
     }
+}
+
+// ─── Legacy Keys (mantidas para invalidação global) ───
+export const GLUCOSE_KEYS = {
+    all: ["glucose"] as const,
+    lists: () => [...GLUCOSE_KEYS.all, "list"] as const,
+    list: (filters: string) => [...GLUCOSE_KEYS.lists(), { filters }] as const,
+    details: () => [...GLUCOSE_KEYS.all, "detail"] as const,
+    detail: (id: string) => [...GLUCOSE_KEYS.details(), id] as const,
+}
+
+// ─── Mutation: Adicionar Leitura ───
+export function useAddGlucoseReading() {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: async (newReading: Partial<GlucoseReading>) => {
+            const supabase = createClient()
+            const { data, error } = await supabase
+                .from("glucose_readings")
+                .insert(newReading)
+                .select()
+                .single()
+
+            if (error) throw error
+            return data
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: GLUCOSE_KEYS.lists() })
+            queryClient.invalidateQueries({ queryKey: ['glucose'] })
+            toast({
+                title: "Sucesso",
+                description: "Registro de glicemia adicionado.",
+                duration: 3000,
+            })
+        },
+        onError: (error) => {
+            toast({
+                title: "Erro",
+                description: `Erro ao salvar: ${error.message}`,
+                variant: "destructive",
+            })
+        }
+    })
+}
+
+// ─── Realtime: Subscribe to Glucose Changes ───
+export function useSubscribeToGlucose(userId: string) {
+    const queryClient = useQueryClient()
+
+    useEffect(() => {
+        if (!userId) return
+
+        const supabase = createClient()
+        const channel = supabase
+            .channel('glucose-changes')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'glucose_readings',
+                    filter: `user_id=eq.${userId}`
+                },
+                (_payload: unknown) => {
+                    queryClient.invalidateQueries({ queryKey: GLUCOSE_KEYS.lists() })
+                    queryClient.invalidateQueries({ queryKey: ['glucose'] })
+                }
+            )
+            .subscribe()
+
+        return () => {
+            supabase.removeChannel(channel)
+        }
+    }, [userId, queryClient])
 }

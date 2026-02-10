@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import dynamic from "next/dynamic"
 import { createClient } from "@/lib/supabase/client"
 import { TrendingUp, TrendingDown, Activity, Percent, Info, Target } from "lucide-react"
 import {
@@ -11,11 +12,24 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import type { GlucoseReading } from "@/lib/types"
 import type { GlucoseStatsData } from "@/hooks/use-glucose-unified"
+import type { Hba1cPoint } from "@/components/hba1c-chart"
+
+// Lazy-load do gráfico HbA1c — Recharts só carrega quando o dialog abre
+const Hba1cChart = dynamic(
+  () => import("@/components/hba1c-chart").then(mod => mod.Hba1cChart),
+  {
+    loading: () => (
+      <div className="flex items-center justify-center h-full text-muted-foreground">
+        <div className="animate-pulse text-sm">Carregando gráfico...</div>
+      </div>
+    ),
+    ssr: false
+  }
+)
 
 type Props = {
   userId: string
@@ -23,11 +37,7 @@ type Props = {
   preCalculatedStats?: GlucoseStatsData
 }
 
-type Hba1cPoint = {
-  date: string
-  value: number
-  formattedDate: string
-}
+// Tipo Hba1cPoint importado de @/components/hba1c-chart
 
 export function GlucoseStats({ userId, refreshKey, preCalculatedStats }: Props) {
   const [average, setAverage] = useState(0)
@@ -234,58 +244,7 @@ export function GlucoseStats({ userId, refreshKey, preCalculatedStats }: Props) 
 
           <div className="mt-4">
             <div className="h-[300px] w-full">
-              {hba1cHistory.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={hba1cHistory}>
-                    <defs>
-                      <linearGradient id="colorA1c" x1="0" y1="0" x2="0" y2="1">
-                        <stop key="gradient-start" offset="5%" stopColor="#9333ea" stopOpacity={0.3} />
-                        <stop key="gradient-end" offset="95%" stopColor="#9333ea" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                    <XAxis
-                      dataKey="formattedDate"
-                      fontSize={12}
-                      tickLine={false}
-                      axisLine={false}
-                      stroke="hsl(var(--muted-foreground))"
-                    />
-                    <YAxis
-                      domain={['dataMin - 0.5', 'dataMax + 0.5']}
-                      fontSize={12}
-                      tickLine={false}
-                      axisLine={false}
-                      tickFormatter={(value) => `${value}%`}
-                      stroke="hsl(var(--muted-foreground))"
-                    />
-                    <Tooltip
-                      contentStyle={{ borderRadius: '8px', border: '1px solid hsl(var(--border))', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', backgroundColor: 'hsl(var(--popover))', color: 'hsl(var(--popover-foreground))' }}
-                      formatter={(value: number) => [`${value}%`, "HbA1c"]}
-                      labelFormatter={(label) => `Semana de ${label}`}
-                      cursor={{ stroke: 'hsl(var(--muted-foreground))', strokeOpacity: 0.2 }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="value"
-                      stroke="#9333ea"
-                      strokeWidth={2}
-                      fillOpacity={1}
-                      fill="url(#colorA1c)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-4">
-                  <p>Dados simplificados para otimização.</p>
-                  <button
-                    onClick={() => loadStats()}
-                    className="text-sm underline text-primary hover:text-primary/80"
-                  >
-                    Carregar histórico detalhado
-                  </button>
-                </div>
-              )}
+              <Hba1cChart data={hba1cHistory} onLoadDetailed={loadStats} />
             </div>
             <div className="mt-4 text-sm text-muted-foreground bg-muted p-4 rounded-lg">
               <p className="font-semibold mb-1">Sobre este cálculo:</p>

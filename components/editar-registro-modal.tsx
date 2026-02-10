@@ -5,7 +5,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -120,7 +120,7 @@ export function EditarRegistroModal({ open, onOpenChange, reading, onDataChange 
             </div>
             <div>
               <DialogTitle className="text-xl">Editar Registro</DialogTitle>
-              <p className="text-sm text-muted-foreground">Atualize as informações do registro</p>
+              <DialogDescription className="text-sm text-muted-foreground">Atualize as informações do registro</DialogDescription>
             </div>
           </div>
         </DialogHeader>
@@ -150,8 +150,8 @@ export function EditarRegistroModal({ open, onOpenChange, reading, onDataChange 
                     type="button"
                     onClick={() => setSelectedCondition(condition.id)}
                     className={`flex flex-col items-center justify-center gap-2 p-4 rounded-lg border-2 transition-all ${selectedCondition === condition.id
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border hover:border-primary/50 bg-card hover:bg-muted/50"
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border hover:border-primary/50 bg-card hover:bg-muted/50"
                       }`}
                   >
                     <Icon className="w-6 h-6" />

@@ -16,7 +16,6 @@ import { DataExportDialog } from "./data-export-dialog"
 import { DeleteAccountDialog } from "./delete-account-dialog"
 import { GlucoseLimits, GlucoseReading, MealTimes } from "@/lib/types"
 import Link from "next/link"
-import { useMealPreferences } from "@/hooks/use-meal-preferences"
 
 type Props = {
   open: boolean
@@ -45,7 +44,6 @@ export function ConfiguracoesModal({ open, onOpenChange }: Props) {
   const [showPasswordModal, setShowPasswordModal] = useState(false)
 
   const { toast } = useToast()
-  const { mealTimes: userMealTimes, advanceMinutes: userAdvanceMinutes, savePreferences } = useMealPreferences()
 
   // Estados para horários de refeições
   const [mealTimes, setMealTimes] = useState<MealTimes>({

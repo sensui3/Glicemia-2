@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useToast } from "@/components/ui/use-toast"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { useAddGlucoseReading } from "@/hooks/use-glucose"
+import { useAddGlucoseReading } from "@/hooks/use-glucose-unified"
 
 type Props = {
   userId: string

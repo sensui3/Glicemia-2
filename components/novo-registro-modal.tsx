@@ -5,7 +5,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -240,7 +240,7 @@ export function NovoRegistroModal({ open, onOpenChange, onDataChange, initialCon
             </div>
             <div>
               <DialogTitle className="text-xl">Novo Registro</DialogTitle>
-              <p className="text-sm text-muted-foreground">Adicione uma nova leitura de glicemia</p>
+              <DialogDescription className="text-sm text-muted-foreground">Adicione uma nova leitura de glicemia</DialogDescription>
             </div>
           </div>
         </DialogHeader>

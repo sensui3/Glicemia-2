@@ -9,7 +9,7 @@ import { DashboardClient } from "@/components/dashboard-client"
 import { MedicacoesWidget } from "@/components/medicacoes-widget"
 import { MedicalCalendar } from "@/components/medical-calendar"
 // import { useGlucoseData } from "@/hooks/use-glucose-data" // Refactored
-import { useSubscribeToGlucose, GLUCOSE_KEYS } from "@/hooks/use-glucose"
+import { useSubscribeToGlucose, GLUCOSE_KEYS } from "@/hooks/use-glucose-unified"
 import {
   useGlucoseUnified,
   type UnifiedOptions,
